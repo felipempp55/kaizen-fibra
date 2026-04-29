@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd \"C:\\\\Users\\\\Felipe\\\\Desktop\\\\kaizen-fibra\"; Get-ChildItem -Path \".\" -Recurse | Where-Object { $_.FullName -notmatch \"node_modules\" -and $_.FullName -notmatch \"\\\\.next\" -and -not $_.PSIsContainer } | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\(\"C:\\\\Users\\\\Felipe\\\\Desktop\\\\kaizen-fibra\\\\\", \"\"\\) })",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000\" -TimeoutSec 5 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty StatusCode)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Start-Sleep -Seconds 2; Invoke-WebRequest -Uri \"http://localhost:3000\" -TimeoutSec 10 | Select-Object -ExpandProperty StatusCode)",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000\" -TimeoutSec 10 -UseBasicParsing | Select-Object StatusCode, @{N='Size';E={$_.RawContent.Length}})",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:3000\" -TimeoutSec 15 -UseBasicParsing -MaximumRedirection 5; Write-Host \"Status: $\\($r.StatusCode\\)\"; Write-Host \"Content length: $\\($r.Content.Length\\)\")",
+      "PowerShell(Start-Process \"http://localhost:3000\")"
+    ]
+  }
+}
