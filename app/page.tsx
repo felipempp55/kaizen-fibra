@@ -7,6 +7,12 @@ import type { NovoApontamento } from '@/lib/types'
 
 export default function Home() {
   const [erro, setErro] = useState<string | null>(null)
+  const [formKey, setFormKey] = useState(0)
+
+  function voltarInicio() {
+    setErro(null)
+    setFormKey((k) => k + 1)
+  }
 
   async function handleSalvar(dados: NovoApontamento) {
     setErro(null)
@@ -22,9 +28,18 @@ export default function Home() {
     <div className="min-h-screen bg-slate-900 flex flex-col">
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700 px-4 py-4 flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-white leading-tight">Kaizen Fibra</h1>
-          <p className="text-slate-400 text-xs">Apontamento de Desperdícios</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={voltarInicio}
+            className="bg-slate-700 hover:bg-slate-600 active:scale-95 text-white p-2 rounded-xl transition-all"
+            title="Voltar ao início"
+          >
+            🏠
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-white leading-tight">Kaizen Fibra</h1>
+            <p className="text-slate-400 text-xs">Apontamento de Desperdícios</p>
+          </div>
         </div>
         <div className="text-right">
           <p className="text-slate-400 text-xs">
@@ -47,7 +62,7 @@ export default function Home() {
             ⚠️ {erro}
           </div>
         )}
-        <FormularioApontamento onSalvar={handleSalvar} />
+        <FormularioApontamento key={formKey} onSalvar={handleSalvar} />
       </main>
     </div>
   )

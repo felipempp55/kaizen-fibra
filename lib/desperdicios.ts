@@ -4,66 +4,69 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
   {
     nome: 'Epóxi',
     tipos: [
-      'Mistura incorreta de epóxi',
-      'Tempo de cura inadequado',
-      'Contaminação química',
-      'Dosagem incorreta',
+      {
+        nome: 'Entupimento do Ferrule',
+        unidade: 'pecas',
+        classificacao: 'perda_retrabalho',
+        tempo: 'nunca',
+      },
+      {
+        nome: 'Quantidade desperdiçada de Epóxi',
+        unidade: 'ml',
+        classificacao: 'nenhum',
+        tempo: 'nunca',
+      },
     ],
   },
   {
     nome: 'Problemas Dimensionais',
     tipos: [
-      'Fora de tolerância dimensional',
-      'Desvio de concentricidade',
-      'Comprimento incorreto',
-      'Diâmetro fora de especificação',
+      {
+        nome: 'Recuo de Fibra',
+        unidade: 'pecas',
+        classificacao: 'perda_retrabalho',
+        tempo: 'nunca',
+      },
+      {
+        nome: 'Polimento do Recartilhado do SMA',
+        unidade: 'pecas',
+        classificacao: 'nenhum',
+        tempo: 'sempre',
+      },
+      {
+        nome: 'União Hub x SMA',
+        unidade: 'pecas',
+        classificacao: 'perda_retrabalho',
+        tempo: 'nunca',
+      },
     ],
   },
   {
-    nome: 'Processos Manuais / Variabilidade',
+    nome: 'Polimento',
     tipos: [
-      'Variabilidade no processo manual',
-      'Erro de operador',
-      'Falta de padronização',
-    ],
-  },
-  {
-    nome: 'Polimento Automático',
-    tipos: [
-      'Polimento inadequado',
-      'Falha no ciclo automático',
-    ],
-  },
-  {
-    nome: 'Medição / Controle',
-    tipos: [
-      'Desvio de medição / controle',
-    ],
-  },
-  {
-    nome: 'Corte / Desencape / Inserção',
-    tipos: [
-      'Corte incorreto',
-      'Desencape inadequado',
-      'Inserção com falha',
+      {
+        nome: 'Manual',
+        unidade: 'pecas',
+        classificacao: 'nenhum',
+        tempo: 'nunca',
+      },
+      {
+        nome: 'Máquina',
+        unidade: 'pecas',
+        classificacao: 'perda_retrabalho',
+        tempo: 'se_retrabalho',
+      },
     ],
   },
   {
     nome: 'Clivagem',
     tipos: [
-      'Clivagem com defeito',
-    ],
-  },
-  {
-    nome: 'Preparação de Material',
-    tipos: [
-      'Preparação de material inadequada',
+      {
+        nome: 'Clivagem com Defeito',
+        unidade: 'pecas',
+        classificacao: 'perda_retrabalho',
+        tempo: 'nunca',
+      },
     ],
   },
 ]
-
-export const CLASSIFICACOES = [
-  { valor: 'perda', label: 'Perda', cor: 'bg-red-500 hover:bg-red-600 active:bg-red-700' },
-  { valor: 'retrabalho', label: 'Retrabalho', cor: 'bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700' },
-  { valor: 'ajuste', label: 'Ajuste', cor: 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700' },
-] as const
