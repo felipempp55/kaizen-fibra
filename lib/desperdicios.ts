@@ -2,7 +2,7 @@ import type { GrupoDesperdicio } from './types'
 
 export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
   {
-    nome: 'Epóxi / Processo Químico',
+    nome: 'Epóxi',
     tipos: [
       'Mistura incorreta de epóxi',
       'Tempo de cura inadequado',
