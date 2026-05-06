@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kaizen Fibra — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --teal:       #1E9FAC;
+    --teal-dark:  #157A86;
+    --teal-light: #E6F6F8;
+    --navy:       #1A3344;
+    --gray-100:   #F2F5F7;
+    --gray-200:   #DDE4EA;
+    --gray-400:   #8FA3B0;
+    --gray-700:   #3D5568;
+    --red:        #D94F4F;
+    --yellow:     #E8A020;
+    --white:      #FFFFFF;
+  }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--gray-100);
+    color: var(--navy);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--white);
+    border-bottom: 3px solid var(--teal);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 18px; }
+
+  .header-title h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--navy);
+    letter-spacing: -0.3px;
+  }
+
+  .header-title p {
+    font-size: 12px;
+    color: var(--gray-400);
+    font-weight: 500;
+    margin-top: 1px;
+  }
+
+  .msb-logo img {
+    height: 48px;
+    width: auto;
+    display: block;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+
+  .clock {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── NAV TABS ── */
+  nav {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    padding: 0 28px;
+    display: flex;
+    gap: 4px;
+  }
+
+  nav a {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-400);
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    transition: all .15s;
+  }
+
+  nav a.active {
+    color: var(--teal);
+    border-bottom-color: var(--teal);
+  }
+
+  nav a:hover { color: var(--teal-dark); }
+
+  /* ── FILTROS ── */
+  .filtros {
+    padding: 16px 28px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filtro-btn {
+    padding: 7px 16px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 4px;
+    background: var(--white);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .filtro-btn.ativo {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: var(--white);
+  }
+
+  .filtro-btn:hover:not(.ativo) { border-color: var(--teal); color: var(--teal); }
+
+  .filtro-sep { width: 1px; height: 24px; background: var(--gray-200); margin: 0 4px; }
+
+  .filtro-label { font-size: 12px; color: var(--gray-400); font-weight: 500; }
+
+  /* ── MAIN GRID ── */
+  main { padding: 16px 28px 28px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── CARDS ── */
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  .card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--teal);
+  }
+
+  .card.red::before  { background: var(--red); }
+  .card.yellow::before { background: var(--yellow); }
+  .card.blue::before { background: #4A90D9; }
+
+  .card-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--gray-400);
+  }
+
+  .card-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1;
+  }
+
+  .card.red   .card-value { color: var(--red); }
+  .card.yellow .card-value { color: var(--yellow); }
+  .card.blue  .card-value { color: #4A90D9; }
+
+  .card-sub {
+    font-size: 11px;
+    color: var(--gray-400);
+    margin-top: 2px;
+  }
+
+  /* ── CHARTS ROW ── */
+  .charts-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+  .charts-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  .panel {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title::before {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 14px;
+    background: var(--teal);
+    border-radius: 2px;
+  }
+
+  .panel-title.red::before   { background: var(--red); }
+  .panel-title.yellow::before { background: var(--yellow); }
+  .panel-title.blue::before  { background: #4A90D9; }
+
+  .panel canvas { width: 100% !important; }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 16px; margin-top: -4px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--gray-700); font-weight: 500; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 10px 28px;
+    font-size: 11px;
+    color: var(--gray-400);
+    border-top: 1px solid var(--gray-200);
+    background: var(--white);
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="msb-logo"><img src="Logo MSB-14.png" alt="MSB" /></div>
+    <div class="header-title">
+      <h1>Indicadores — Kaizen Fibra</h1>
+      <p>Engenharia de Processos · Apontamento de Desperdícios</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="data-hoje"></span>
+    <span style="color:var(--gray-200)">|</span>
+    <span class="clock" id="relogio"></span>
+  </div>
+</header>
+
+<!-- NAV TABS -->
+<nav>
+  <a href="#" class="">📋 Apontamento</a>
+  <a href="#" class="active">📊 Dashboard</a>
+</nav>
+
+<!-- FILTROS -->
+<div class="filtros">
+  <span class="filtro-label">Período:</span>
+  <button class="filtro-btn" onclick="setFiltro(this)">Hoje</button>
+  <button class="filtro-btn ativo" onclick="setFiltro(this)">Semana</button>
+  <button class="filtro-btn" onclick="setFiltro(this)">Mês</button>
+  <button class="filtro-btn" onclick="setFiltro(this)">Personalizado</button>
+  <div class="filtro-sep"></div>
+  <span class="filtro-label">Última atualização: <strong id="last-update"></strong></span>
+</div>
+
+<!-- MAIN -->
+<main>
+
+  <!-- CARDS -->
+  <div class="cards">
+    <div class="card">
+      <span class="card-label">Total Apontamentos</span>
+      <span class="card-value">48</span>
+      <span class="card-sub">neste período</span>
+    </div>
+    <div class="card red">
+      <span class="card-label">Perdas</span>
+      <span class="card-value">21</span>
+      <span class="card-sub">44% do total</span>
+    </div>
+    <div class="card yellow">
+      <span class="card-label">Retrabalhos</span>
+      <span class="card-value">27</span>
+      <span class="card-sub">56% do total</span>
+    </div>
+    <div class="card blue">
+      <span class="card-label">Tempo de Retrabalho</span>
+      <span class="card-value">143</span>
+      <span class="card-sub">minutos acumulados</span>
+    </div>
+  </div>
+
+  <!-- EVOLUÇÃO + POR GRUPO -->
+  <div class="charts-row">
+    <div class="panel">
+      <div class="panel-title">Evolução no Tempo</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Perdas</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Retrabalhos</div>
+      </div>
+      <canvas id="chartEvolucao" height="180"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Apontamentos por Grupo</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Perdas</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Retrabalhos</div>
+      </div>
+      <canvas id="chartGrupo" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- PARETOS -->
+  <div class="charts-row-3">
+    <div class="panel">
+      <div class="panel-title red">Pareto — Nº de Perdas</div>
+      <canvas id="chartParetoPerdas" height="200"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title yellow">Pareto — Nº de Retrabalhos</div>
+      <canvas id="chartParetoRetrab" height="200"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title blue">Pareto — Tempo de Retrabalho</div>
+      <canvas id="chartParetoTempo" height="200"></canvas>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <span>Kaizen Fibra · Sistema de Apontamento de Desperdícios</span>
+  <span>Medical System do Brasil</span>
+</footer>
+
+<script>
+// ── RELÓGIO ──
+function atualizarRelogio() {
+  const agora = new Date()
+  document.getElementById('relogio').textContent =
+    agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  document.getElementById('data-hoje').textContent =
+    agora.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
+  document.getElementById('last-update').textContent =
+    agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+atualizarRelogio()
+setInterval(atualizarRelogio, 1000)
+
+// ── FILTROS ──
+function setFiltro(btn) {
+  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'))
+  btn.classList.add('ativo')
+}
+
+// ── CORES ──
+const TEAL   = '#1E9FAC'
+const RED    = '#D94F4F'
+const YELLOW = '#E8A020'
+const BLUE   = '#4A90D9'
+const GRID   = '#E8EEF2'
+const LABEL  = '#8FA3B0'
+
+// ── DEFAULTS ──
+Chart.defaults.font.family = "'Segoe UI', Arial, sans-serif"
+Chart.defaults.font.size   = 11
+Chart.defaults.color       = LABEL
+
+// ── TOOLTIP STYLE ──
+const tooltipDefaults = {
+  backgroundColor: '#1A3344',
+  titleColor: '#fff',
+  bodyColor: '#b3d4e0',
+  borderColor: '#2AABB8',
+  borderWidth: 1,
+  padding: 10,
+  cornerRadius: 4,
+}
+
+// ── 1. EVOLUÇÃO ──
+new Chart(document.getElementById('chartEvolucao'), {
+  type: 'line',
+  data: {
+    labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+    datasets: [
+      {
+        label: 'Perdas',
+        data: [3, 5, 2, 6, 4, 1, 0],
+        borderColor: RED,
+        backgroundColor: RED + '22',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: RED,
+        tension: 0.3,
+        fill: true,
+      },
+      {
+        label: 'Retrabalhos',
+        data: [4, 6, 5, 7, 3, 2, 0],
+        borderColor: YELLOW,
+        backgroundColor: YELLOW + '22',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: YELLOW,
+        tension: 0.3,
+        fill: true,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false }, tooltip: { ...tooltipDefaults } },
+    scales: {
+      x: { grid: { color: GRID } },
+      y: { grid: { color: GRID }, beginAtZero: true, ticks: { stepSize: 2 } },
+    },
+  },
+})
+
+// ── 2. POR GRUPO ──
+new Chart(document.getElementById('chartGrupo'), {
+  type: 'bar',
+  data: {
+    labels: ['Epóxi', 'Prob.\nDim.', 'Polimento', 'Clivagem'],
+    datasets: [
+      { label: 'Perdas',      data: [8, 6, 4, 3],  backgroundColor: RED,    borderRadius: 3 },
+      { label: 'Retrabalhos', data: [5, 9, 8, 5],  backgroundColor: YELLOW, borderRadius: 3 },
+    ],
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false }, tooltip: { ...tooltipDefaults } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: GRID }, beginAtZero: true },
+    },
+  },
+})
+
+// ── HELPER PARETO ──
+function paretoDataset(valores, cor) {
+  const total = valores.reduce((s, v) => s + v, 0)
+  let acum = 0
+  const pct = valores.map(v => { acum += v; return Math.round(acum / total * 100) })
+  return {
+    bar: { data: valores, backgroundColor: cor + 'CC', borderColor: cor, borderWidth: 1.5, borderRadius: 3, order: 2 },
+    line: { data: pct, type: 'line', borderColor: '#1A3344', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#1A3344', yAxisID: 'y2', tension: 0.1, order: 1 },
+  }
+}
+
+function makePareto(id, labels, valores, cor) {
+  const { bar, line } = paretoDataset(valores, cor)
+  new Chart(document.getElementById(id), {
+    data: {
+      labels,
+      datasets: [
+        { ...bar,  label: 'Quantidade', yAxisID: 'y1' },
+        { ...line, label: '% Acumulado' },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { ...tooltipDefaults } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 30 } },
+        y1: { position: 'left',  grid: { color: GRID }, beginAtZero: true },
+        y2: { position: 'right', grid: { display: false }, beginAtZero: true, max: 100,
+              ticks: { callback: v => v + '%' } },
+      },
+    },
+  })
+}
+
+// ── 3. PARETO PERDAS ──
+makePareto('chartParetoPerdas',
+  ['Entup.\nFerrule', 'Recuo\nFibra', 'União\nHub SMA', 'Clivagem'],
+  [8, 6, 4, 3],
+  RED
+)
+
+// ── 4. PARETO RETRABALHOS ──
+makePareto('chartParetoRetrab',
+  ['Pol.\nMáquina', 'União\nHub SMA', 'Recuo\nFibra', 'Pol.\nSMA'],
+  [9, 8, 6, 4],
+  YELLOW
+)
+
+// ── 5. PARETO TEMPO ──
+makePareto('chartParetoTempo',
+  ['Pol.\nMáquina', 'Pol.\nSMA', 'União\nHub SMA', 'Recuo\nFibra'],
+  [62, 38, 28, 15],
+  BLUE
+)
+</script>
+</body>
+</html>
