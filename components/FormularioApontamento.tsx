@@ -109,13 +109,13 @@ export default function FormularioApontamento({ onSalvar }: Props) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 py-12">
         <div className="text-8xl">✅</div>
-        <h2 className="text-3xl font-bold text-green-400 text-center">Apontamento Salvo!</h2>
-        <p className="text-slate-400 text-center text-lg">
+        <h2 className="text-3xl font-bold text-[#1E9FAC] text-center">Apontamento Salvo!</h2>
+        <p className="text-[#8FA3B0] text-center text-lg">
           {tipoSelecionado?.nome} · OP {numeroOP.toUpperCase()} · {quantidade} {tipoSelecionado?.unidade === 'ml' ? 'ml' : 'peça(s)'}
         </p>
         <button
           onClick={resetar}
-          className="mt-4 bg-blue-500 hover:bg-blue-600 active:scale-95 text-white font-bold text-xl px-10 py-5 rounded-2xl transition-all"
+          className="mt-4 bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 text-white font-bold text-xl px-10 py-5 rounded-xl transition-all"
         >
           Novo Apontamento
         </button>
@@ -148,7 +148,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
       {/* Tipo */}
       {etapaAtual === 'tipo' && grupo && (
         <div className="flex flex-col gap-3">
-          <p className="text-slate-400 text-sm text-center mb-1">{grupo.nome}</p>
+          <p className="text-[#8FA3B0] text-sm text-center font-medium mb-1">{grupo.nome}</p>
           {grupo.tipos.map((t) => (
             <BotaoGrande
               key={t.nome}
@@ -169,13 +169,13 @@ export default function FormularioApontamento({ onSalvar }: Props) {
       {etapaAtual === 'op_operador' && (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <label className="text-slate-300 text-sm font-semibold">Nome do Operador</label>
+            <label className="text-[#1A3344] text-base font-semibold">Nome do Operador</label>
             <input
               type="text"
               value={nomeOperador}
               onChange={(e) => setNomeOperador(e.target.value)}
               placeholder="Digite o nome do operador"
-              className="bg-slate-800 text-white text-lg px-4 py-4 rounded-2xl border border-slate-600 focus:border-blue-500 focus:outline-none placeholder:text-slate-500"
+              className="bg-white border-2 border-[#DDE4EA] text-[#1A3344] text-lg px-4 py-4 rounded-xl focus:border-[#1E9FAC] focus:outline-none placeholder:text-[#DDE4EA]"
             />
           </div>
           <TecladoNumerico
@@ -205,7 +205,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
       {/* Classificação */}
       {etapaAtual === 'classificacao' && (
         <div className="flex flex-col gap-4">
-          <p className="text-slate-300 text-lg font-semibold text-center">Tipo de ocorrência</p>
+          <p className="text-[#1A3344] text-lg font-semibold text-center">Tipo de ocorrência</p>
           <div className="grid grid-cols-2 gap-3">
             {CLASSIFICACOES.map((c) => (
               <BotaoGrande
@@ -236,7 +236,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
         </div>
       )}
 
-      {/* Tempo (step separado — apenas para tipos com tempo='sempre') */}
+      {/* Tempo */}
       {etapaAtual === 'tempo' && (
         <TecladoNumerico
           label="Tempo total gasto (minutos)"
@@ -251,8 +251,8 @@ export default function FormularioApontamento({ onSalvar }: Props) {
       {/* Confirmar */}
       {etapaAtual === 'confirmar' && (
         <div className="flex flex-col gap-4">
-          <h3 className="text-xl font-bold text-center text-white mb-2">Confirmar apontamento</h3>
-          <div className="bg-slate-800 rounded-2xl p-5 flex flex-col gap-3 text-base">
+          <h3 className="text-xl font-bold text-center text-[#1A3344] mb-2">Confirmar apontamento</h3>
+          <div className="bg-white border border-[#DDE4EA] rounded-xl p-5 flex flex-col gap-3 text-base">
             <Linha label="Grupo" valor={grupoSelecionado ?? ''} />
             <Linha label="Tipo" valor={tipoSelecionado?.nome ?? ''} />
             <Linha label="Operador" valor={nomeOperador} />
@@ -267,7 +267,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
           <button
             onClick={confirmar}
             disabled={salvando}
-            className="bg-green-500 hover:bg-green-600 active:scale-95 disabled:opacity-50 text-white font-bold text-2xl py-6 rounded-2xl transition-all mt-2"
+            className="bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 disabled:opacity-50 text-white font-bold text-2xl py-6 rounded-xl transition-all mt-2"
           >
             {salvando ? 'Salvando…' : '✓ Salvar'}
           </button>
@@ -279,7 +279,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
         {etapa > 0 && (
           <button
             onClick={voltar}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-semibold text-lg py-4 rounded-2xl transition-all"
+            className="flex-1 bg-white border border-[#DDE4EA] hover:border-[#1E9FAC] hover:text-[#1E9FAC] active:scale-95 text-[#3D5568] font-semibold text-lg py-4 rounded-xl transition-all"
           >
             ← Voltar
           </button>
@@ -289,7 +289,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
           <button
             onClick={avancar}
             disabled={!podeContinuar()}
-            className="flex-1 bg-blue-500 hover:bg-blue-600 active:scale-95 disabled:opacity-40 text-white font-bold text-lg py-4 rounded-2xl transition-all"
+            className="flex-1 bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 disabled:opacity-40 text-white font-bold text-lg py-4 rounded-xl transition-all"
           >
             Continuar →
           </button>
@@ -301,9 +301,9 @@ export default function FormularioApontamento({ onSalvar }: Props) {
 
 function Linha({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="flex justify-between items-start gap-4">
-      <span className="text-slate-400 shrink-0">{label}</span>
-      <span className="text-white font-semibold text-right">{valor}</span>
+    <div className="flex justify-between items-start gap-4 border-b border-[#F2F5F7] pb-2 last:border-0 last:pb-0">
+      <span className="text-[#8FA3B0] shrink-0 font-medium">{label}</span>
+      <span className="text-[#1A3344] font-semibold text-right">{valor}</span>
     </div>
   )
 }

@@ -18,31 +18,36 @@ export default function Navegacao({ onReset }: Props) {
   }, [])
 
   const tabClass = (ativo: boolean) =>
-    `px-4 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
+    `px-5 py-2.5 text-sm font-semibold transition-all active:scale-95 rounded-lg ${
       ativo
-        ? 'bg-blue-500 text-white'
-        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+        ? 'bg-[#1E9FAC] text-white'
+        : 'bg-white border border-[#DDE4EA] text-[#8FA3B0] hover:border-[#1E9FAC] hover:text-[#1E9FAC]'
     }`
 
   return (
-    <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between gap-4 shrink-0">
+    <header className="bg-white border-b-[3px] border-[#1E9FAC] px-6 py-3 grid grid-cols-3 items-center shrink-0 shadow-sm">
+      {/* Esquerda: logo + título */}
       <div className="flex items-center gap-3">
         {onReset && (
           <button
             onClick={onReset}
-            className="bg-slate-700 hover:bg-slate-600 active:scale-95 text-white p-2.5 rounded-xl transition-all text-lg"
+            className="bg-[#F2F5F7] hover:bg-[#E6F6F8] active:scale-95 border border-[#DDE4EA] text-[#1A3344] p-2.5 rounded-lg transition-all"
             title="Voltar ao início"
           >
             🏠
           </button>
         )}
+        <img src="/Logo MSB-14.png" alt="MSB" className="h-10 w-auto" />
         <div>
-          <h1 className="text-lg font-bold text-white leading-tight">Kaizen Fibra</h1>
-          <p className="text-slate-400 text-xs">Apontamento de Desperdícios</p>
+          <h1 className="text-base font-extrabold text-[#1A3344] leading-tight tracking-tight">
+            Kaizen Fibra
+          </h1>
+          <p className="text-[11px] text-[#8FA3B0] font-medium">Apontamento de Desperdícios</p>
         </div>
       </div>
 
-      <nav className="flex gap-2">
+      {/* Centro: tabs de navegação */}
+      <nav className="flex gap-2 justify-center">
         {pathname === '/' && onReset ? (
           <button onClick={onReset} className={tabClass(true)}>
             📋 Apontamento
@@ -57,11 +62,12 @@ export default function Navegacao({ onReset }: Props) {
         </Link>
       </nav>
 
-      <div className="text-right shrink-0">
-        <p className="text-slate-400 text-xs">
+      {/* Direita: data e hora */}
+      <div className="text-right">
+        <p className="text-[11px] text-[#8FA3B0]">
           {agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
         </p>
-        <p className="text-slate-300 text-sm font-mono">
+        <p className="text-sm font-bold text-[#1A3344] font-mono">
           {agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>

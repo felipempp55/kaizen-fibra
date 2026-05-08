@@ -47,8 +47,9 @@ function calcularPareto(itens: { nome: string; valor: number }[]) {
 }
 
 const TOOLTIP_STYLE = {
-  contentStyle: { backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 },
-  labelStyle: { color: '#e2e8f0' },
+  contentStyle: { backgroundColor: '#1A3344', border: '1px solid #1E9FAC', borderRadius: 6 },
+  labelStyle: { color: '#ffffff', fontWeight: 700 },
+  itemStyle: { color: '#b3d4e0' },
 }
 
 const PERIODOS: { valor: Periodo; label: string }[] = [
@@ -139,7 +140,7 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-[#F2F5F7] flex flex-col">
       <Navegacao />
 
       <main className="flex-1 overflow-y-auto p-4 flex flex-col gap-5">
@@ -150,10 +151,10 @@ export default function DashboardPage() {
             <button
               key={p.valor}
               onClick={() => setPeriodo(p.valor)}
-              className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all active:scale-95 border ${
                 periodo === p.valor
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  ? 'bg-[#1E9FAC] text-white border-[#1E9FAC]'
+                  : 'bg-white text-[#8FA3B0] border-[#DDE4EA] hover:border-[#1E9FAC] hover:text-[#1E9FAC]'
               }`}
             >
               {p.label}
@@ -166,27 +167,27 @@ export default function DashboardPage() {
                 type="date"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
-                className="bg-slate-700 text-slate-200 text-sm px-3 py-2 rounded-xl border border-slate-600 focus:border-blue-500 focus:outline-none"
+                className="bg-white text-[#1A3344] text-sm px-3 py-2 rounded-lg border border-[#DDE4EA] focus:border-[#1E9FAC] focus:outline-none"
               />
               <span className="text-slate-400 text-sm">→</span>
               <input
                 type="date"
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
-                className="bg-slate-700 text-slate-200 text-sm px-3 py-2 rounded-xl border border-slate-600 focus:border-blue-500 focus:outline-none"
+                className="bg-white text-[#1A3344] text-sm px-3 py-2 rounded-lg border border-[#DDE4EA] focus:border-[#1E9FAC] focus:outline-none"
               />
             </div>
           )}
 
-          {carregando && <span className="text-slate-500 text-sm">Carregando…</span>}
+          {carregando && <span className="text-[#8FA3B0] text-sm">Carregando…</span>}
         </div>
 
         {/* Cards de resumo */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Cartao label="Apontamentos" valor={totais.apontamentos} cor="text-white" />
-          <Cartao label="Perdas" valor={totais.perdas} cor="text-red-400" />
-          <Cartao label="Retrabalhos" valor={totais.retrabalhos} cor="text-yellow-400" />
-          <Cartao label="Tempo Retrabalho" valor={`${totais.tempoTotal} min`} cor="text-blue-400" />
+          <Cartao label="Apontamentos" valor={totais.apontamentos} cor="text-[#1A3344]" borda="border-l-[#1E9FAC]" />
+          <Cartao label="Perdas" valor={totais.perdas} cor="text-red-500" borda="border-l-red-500" />
+          <Cartao label="Retrabalhos" valor={totais.retrabalhos} cor="text-yellow-500" borda="border-l-yellow-500" />
+          <Cartao label="Tempo Retrabalho" valor={`${totais.tempoTotal} min`} cor="text-[#4A90D9]" borda="border-l-[#4A90D9]" />
         </div>
 
         {/* Evolução + Por grupo */}
@@ -194,11 +195,11 @@ export default function DashboardPage() {
           <Painel titulo="Evolução no Tempo">
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={evolucao} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
+                <XAxis dataKey="data" tick={{ fill: '#8FA3B0', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#8FA3B0', fontSize: 11 }} allowDecimals={false} />
                 <Tooltip {...TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
+                <Legend wrapperStyle={{ color: '#8FA3B0', fontSize: 12 }} />
                 <Line type="monotone" dataKey="Perdas" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="Retrabalhos" stroke="#eab308" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
@@ -208,11 +209,11 @@ export default function DashboardPage() {
           <Painel titulo="Apontamentos por Grupo">
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={porGrupo} margin={{ top: 5, right: 20, left: 0, bottom: 40 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="grupo" tick={{ fill: '#94a3b8', fontSize: 11 }} angle={-20} textAnchor="end" interval={0} />
-                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
+                <XAxis dataKey="grupo" tick={{ fill: '#8FA3B0', fontSize: 11 }} angle={-20} textAnchor="end" interval={0} />
+                <YAxis tick={{ fill: '#8FA3B0', fontSize: 11 }} allowDecimals={false} />
                 <Tooltip {...TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
+                <Legend wrapperStyle={{ color: '#8FA3B0', fontSize: 12 }} />
                 <Bar dataKey="Perdas" fill="#ef4444" radius={[3, 3, 0, 0]} />
                 <Bar dataKey="Retrabalhos" fill="#eab308" radius={[3, 3, 0, 0]} />
               </BarChart>
@@ -241,19 +242,22 @@ export default function DashboardPage() {
   )
 }
 
-function Cartao({ label, valor, cor }: { label: string; valor: string | number; cor: string }) {
+function Cartao({ label, valor, cor, borda }: { label: string; valor: string | number; cor: string; borda: string }) {
   return (
-    <div className="bg-slate-800 rounded-2xl p-4 flex flex-col gap-1">
-      <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">{label}</p>
-      <p className={`text-3xl font-bold ${cor}`}>{valor}</p>
+    <div className={`bg-white border border-[#DDE4EA] border-l-4 ${borda} rounded-xl p-4 flex flex-col gap-1 shadow-sm`}>
+      <p className="text-[#8FA3B0] text-[10px] font-bold uppercase tracking-widest">{label}</p>
+      <p className={`text-3xl font-extrabold ${cor}`}>{valor}</p>
     </div>
   )
 }
 
 function Painel({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div className="bg-slate-800 rounded-2xl p-4 flex flex-col gap-3">
-      <h3 className="text-slate-300 font-semibold text-sm uppercase tracking-wide">{titulo}</h3>
+    <div className="bg-white border border-[#DDE4EA] rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+      <h3 className="text-[#1A3344] font-bold text-xs uppercase tracking-wider flex items-center gap-2">
+        <span className="w-1 h-3.5 bg-[#1E9FAC] rounded-full inline-block" />
+        {titulo}
+      </h3>
       {children}
     </div>
   )

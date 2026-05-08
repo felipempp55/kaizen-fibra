@@ -5,7 +5,7 @@
 
 ## O que é o projeto
 
-**Kaizen Fibra** é um sistema de apontamento de desperdícios industriais para uso no chão de fábrica de fibra óptica. O operador preenche um formulário em etapas no tablet, registrando o tipo de desperdício ocorrido. Os gestores acompanham os dados em um dashboard com gráficos e filtros de período.
+**Kaizen Fibra** é um sistema de apontamento de desperdícios industriais para uso no chão de fábrica de fibra óptica da empresa **MSB (Medical System do Brasil)**. O operador preenche um formulário em etapas no tablet, registrando o tipo de desperdício ocorrido. Os gestores acompanham os dados em um dashboard com gráficos e filtros de período.
 
 ---
 
@@ -17,8 +17,24 @@
 - **Gráficos:** Recharts
 - **Repositório:** https://github.com/felipempp55/kaizen-fibra
 - **Pasta local:** `C:\Users\felipe.pereira\Documents\kaizen-fibra`
-- **Deploy (produção):** Vercel — domínio gerado automaticamente (ex: kaizen-fibra.vercel.app)
+- **Deploy (produção):** Vercel — deploy automático a cada git push
 - **Dev server local:** `npm run dev` → http://localhost:3000
+
+---
+
+## Design — Paleta MSB
+
+O app usa o visual da MSB (Medical System do Brasil):
+- **Fundo:** `#F2F5F7` (cinza claro)
+- **Painéis:** `#FFFFFF` (branco) com borda `#DDE4EA`
+- **Cor primária (teal):** `#1E9FAC`
+- **Teal escuro (hover):** `#157A86`
+- **Texto principal (navy):** `#1A3344`
+- **Texto secundário:** `#8FA3B0`
+- **Vermelho (perda):** `#D94F4F`
+- **Amarelo (retrabalho):** `#E8A020`
+- **Azul (tempo):** `#4A90D9`
+- **Logo:** `Logo MSB-14.png` (azul) na pasta `/public`
 
 ---
 
@@ -29,14 +45,15 @@ app/
   page.tsx               — Formulário de apontamento (página principal)
   dashboard/page.tsx     — Dashboard com gráficos e filtros
   actions.ts             — Server action: salvarApontamento()
+  globals.css            — Estilos base (fundo claro MSB)
   layout.tsx             — Layout raiz
 
 components/
-  Navegacao.tsx          — Header compartilhado com tabs (Apontamento / Dashboard) + botão 🏠
+  Navegacao.tsx          — Header com 3 colunas: logo | tabs centralizados | data/hora
   FormularioApontamento.tsx — Formulário multi-etapas dinâmico
-  EtapaIndicador.tsx     — Barra de progresso das etapas
-  BotaoGrande.tsx        — Botão touch-friendly
-  TecladoNumerico.tsx    — Teclado numérico customizado
+  EtapaIndicador.tsx     — Barra de progresso (teal)
+  BotaoGrande.tsx        — Botão touch-friendly (branco com hover teal)
+  TecladoNumerico.tsx    — Teclado numérico customizado (tema claro)
   GraficoPareto.tsx      — Gráfico Pareto reutilizável (barras + linha acumulada)
 
 lib/
@@ -47,6 +64,12 @@ lib/
 supabase/
   schema.sql             — Script de criação da tabela (já executado)
   migration_v2.sql       — Migration com novos campos (já executado)
+
+public/
+  Logo MSB-14.png        — Logo MSB azul (usada no header)
+  Logo MSB-12.png        — Logo MSB branca
+
+dashboard-mockup.html   — Mockup visual do dashboard (referência de design)
 ```
 
 ---
@@ -103,22 +126,24 @@ Etapas dinâmicas baseadas no tipo selecionado:
 ## Dashboard (app/dashboard/page.tsx)
 
 - Filtros: **Hoje / Semana / Mês / Personalizado** (padrão: Semana)
-- Cards de resumo: Total apontamentos, Perdas, Retrabalhos, Tempo total
-- Gráficos:
-  - Evolução no tempo (linha: perdas vs retrabalhos por dia)
-  - Apontamentos por grupo (barras agrupadas)
+- Cards de resumo com borda colorida lateral (estilo MSB)
+- Gráficos com cores e grid no estilo MSB
+- Charts:
+  - Evolução no tempo (linha)
+  - Apontamentos por grupo (barras)
   - Pareto: número de perdas por tipo
   - Pareto: número de retrabalhos por tipo
   - Pareto: tempo de retrabalho por tipo (minutos)
 
 ---
 
-## Navegação
+## Navegação (Navegacao.tsx)
 
-- Header compartilhado (`Navegacao.tsx`) presente em todas as páginas
-- Botão 🏠 aparece só na página do formulário — reseta o formulário ao início
+- Header com **3 colunas**: logo/título | tabs centralizados | data/hora
+- Botão 🏠 aparece só na página do formulário — reseta o formulário
 - Tabs: **📋 Apontamento** | **📊 Dashboard**
 - Relógio atualiza a cada minuto em tempo real
+- Logo MSB no canto esquerdo (`/public/Logo MSB-14.png`)
 
 ---
 
@@ -126,33 +151,20 @@ Etapas dinâmicas baseadas no tipo selecionado:
 
 - App publicado na **Vercel** com deploy automático a cada `git push`
 - Variáveis de ambiente configuradas na Vercel:
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- Último push: commit `b0ec6f9` — "feat: dashboard com graficos, navegacao e botao home"
+  - `NEXT_PUBLIC_SUPABASE_URL=https://nogmekfeerhfuobxjmkv.supabase.co`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...`
 
 ---
 
 ## Próximos passos planejados (não implementados)
 
-1. **Auto-refresh no dashboard** — atualizar automaticamente a cada 30s/1min para exibir na TV da produção
+1. **Auto-refresh no dashboard** — atualizar automaticamente a cada 30s/1min para TV na produção
 2. **Tela de histórico** — listar, filtrar e conferir apontamentos passados
 3. **Autenticação** — login com Supabase Auth para proteger o sistema
 4. **Exportação** — relatório em Excel ou PDF
-5. **Valores em reais** — adicionar custo por desperdício (futuro)
+5. **Valores em reais** — custo por desperdício (futuro)
 6. **Campo observação** — existe no banco, não está no formulário ainda
-7. **Investigar** — botões não avançam no browser do colega (CSS funciona mas JS não — possível problema de hidratação do Next.js em acesso via rede local)
-
----
-
-## Variáveis de ambiente (.env.local — NÃO está no git)
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://nogmekfeerhfuobxjmkv.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-Se precisar recriar o `.env.local`, os valores estão no painel do Supabase em:
-**Project Settings → API Keys → Legacy anon, service_role API keys**
+7. **Bug a investigar** — botões não avançam no browser de colegas via rede local (CSS funciona, JS não — possível problema de hidratação do Next.js em acesso via IP)
 
 ---
 
@@ -169,7 +181,14 @@ npm run dev
 ```powershell
 cd "C:\Users\felipe.pereira\Documents\kaizen-fibra"
 git add .
-git commit -m "descrição da mudança"
+git commit -m "descrição"
 git push
-# A Vercel detecta o push e faz deploy automático em ~2 minutos
+# Vercel faz deploy automático em ~2 minutos
+```
+
+## Variáveis de ambiente (.env.local — NÃO está no git)
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://nogmekfeerhfuobxjmkv.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
