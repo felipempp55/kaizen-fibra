@@ -35,7 +35,7 @@ export default function Home() {
             ⚠️ {erro}
           </div>
         )}
-        <div className="bg-white border border-[#DDE4EA] rounded-2xl p-5 shadow-sm mt-2">
+        <div className="bg-white border border-[#DDE4EA] rounded-2xl p-4 shadow-sm mt-2">
           <FormularioApontamento key={formKey} onSalvar={handleSalvar} />
         </div>
       </main>

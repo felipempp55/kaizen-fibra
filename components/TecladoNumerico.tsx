@@ -31,8 +31,11 @@ export default function TecladoNumerico({ valor, onChange, label, placeholder, m
     <div className="flex flex-col items-center gap-4">
       <label className="text-[#1A3344] text-base font-semibold text-center">{label}</label>
 
-      <div className="bg-white border-2 border-[#DDE4EA] rounded-xl w-full py-4 px-6 text-center text-4xl font-mono font-bold text-[#1A3344] min-h-[72px] flex items-center justify-center tracking-widest">
-        {valor || <span className="text-[#DDE4EA]">{placeholder ?? '—'}</span>}
+      <div className="bg-white border-2 border-[#DDE4EA] rounded-xl w-full py-4 px-4 text-center text-4xl font-mono font-bold text-[#1A3344] min-h-[72px] flex items-center justify-center tracking-widest overflow-hidden">
+        {valor
+          ? <span className="truncate">{valor}</span>
+          : <span className="text-[#DDE4EA] text-lg font-sans font-normal tracking-normal">{placeholder ?? '—'}</span>
+        }
       </div>
 
       <div className="grid grid-cols-3 gap-3 w-full">
