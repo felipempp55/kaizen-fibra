@@ -128,8 +128,10 @@ export default function CEPPage() {
             ))}
           </div>
 
-          {/* Conteúdo da aba Cartas */}
-          {abaHome === 'cartas' && <CartasControle />}
+          {/* Conteúdo da aba Cartas — sempre montado para preservar estado e auto-refresh */}
+          <div className={abaHome === 'cartas' ? '' : 'hidden'}>
+            <CartasControle />
+          </div>
 
           {/* Conteúdo da aba Coletas */}
           {abaHome === 'coletas' && <>

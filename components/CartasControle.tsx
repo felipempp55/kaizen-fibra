@@ -29,6 +29,7 @@ interface ColetaDB {
   data_coleta: string
   total_amostras: number
   amostras: AmostraRaw[]
+  status: 'rascunho' | 'finalizado'
 }
 
 // ─── Helpers visuais ──────────────────────────────────────────────────────────
@@ -79,42 +80,46 @@ function SemDados() {
 }
 
 // ─── Dot factory ──────────────────────────────────────────────────────────────
-// Gera um renderer de dot: teal normal, vermelho se oocKey=true no payload
+// Gera um renderer de dot:
+//   - OOC → vermelho sólido
+//   - Em andamento (rascunho) → oco com borda tracejada na cor do CTQ
+//   - Normal → sólido na cor do CTQ
 function makeDot(oocKey: string, cor = '#1E9FAC') {
   return function CustomDot(props: Record<string, unknown>) {
     const cx = props.cx as number | undefined
     const cy = props.cy as number | undefined
     const payload = props.payload as Record<string, unknown> | undefined
     if (cx == null || cy == null || payload == null) return null
-    return (
-      <circle
-        cx={cx} cy={cy} r={4}
-        fill={Boolean(payload[oocKey]) ? '#ef4444' : cor}
-        stroke="white" strokeWidth={1.5}
-      />
-    )
+    const isOOC       = Boolean(payload[oocKey])
+    const emAndamento = Boolean(payload['emAndamento'])
+    if (isOOC) {
+      return <circle cx={cx} cy={cy} r={5} fill="#ef4444" stroke="white" strokeWidth={1.5} />
+    }
+    if (emAndamento) {
+      return <circle cx={cx} cy={cy} r={4} fill="white" stroke={cor} strokeWidth={2} strokeDasharray="2 1" />
+    }
+    return <circle cx={cx} cy={cy} r={4} fill={cor} stroke="white" strokeWidth={1.5} />
   }
 }
 
 // Dot específico para atributo: teal=OK, vermelho=NOK
+// Se emAndamento (rascunho): dot oco (sem preenchimento) com borda colorida
 function dotAtributo(props: Record<string, unknown>) {
   const cx = props.cx as number | undefined
   const cy = props.cy as number | undefined
-  const payload = props.payload as { resultado?: string } | undefined
+  const payload = props.payload as { resultado?: string; emAndamento?: boolean } | undefined
   if (cx == null || cy == null || payload == null) return null
-  return (
-    <circle
-      cx={cx} cy={cy} r={5}
-      fill={payload.resultado === 'nok' ? '#ef4444' : '#1E9FAC'}
-      stroke="white" strokeWidth={1.5}
-    />
-  )
+  const cor = payload.resultado === 'nok' ? '#ef4444' : '#1E9FAC'
+  if (payload.emAndamento) {
+    return <circle cx={cx} cy={cy} r={5} fill="white" stroke={cor} strokeWidth={2} strokeDasharray="2 1" />
+  }
+  return <circle cx={cx} cy={cy} r={5} fill={cor} stroke="white" strokeWidth={1.5} />
 }
 
 // ─── Carta p — 1 ponto por amostra individual (atributo) ─────────────────────
 function CartaP({ coletas }: { coletas: ColetaDB[] }) {
   // Achatar todas as amostras de todas as coletas, em ordem cronológica
-  type Ponto = { seq: number; label: string; y: number; resultado: 'ok' | 'nok'; op: string }
+  type Ponto = { seq: number; label: string; y: number; resultado: 'ok' | 'nok'; op: string; emAndamento: boolean }
   const pontos: Ponto[] = []
   let seq = 0
   coletas.forEach(col => {
@@ -127,6 +132,7 @@ function CartaP({ coletas }: { coletas: ColetaDB[] }) {
           y: a.resultado === 'nok' ? 1 : 0,
           resultado: a.resultado,
           op: col.numero_op,
+          emAndamento: col.status === 'rascunho',
         })
       }
     })
@@ -255,14 +261,14 @@ function PainelCapabilidade({
 // ─── Carta I-MR — medições individuais (variável) ─────────────────────────────
 function CartaIMR({ coletas, lse, lsi }: { coletas: ColetaDB[]; lse?: number; lsi?: number }) {
   // Achatar todas as medições individuais de todas as coletas, em ordem
-  type Medicao = { seq: number; label: string; x: number; op: string }
+  type Medicao = { seq: number; label: string; x: number; op: string; emAndamento: boolean }
   const medicoes: Medicao[] = []
   let seq = 0
   coletas.forEach(col => {
     ;(col.amostras ?? []).forEach(a => {
       if (a.valor != null) {
         seq++
-        medicoes.push({ seq, label: `#${seq}`, x: a.valor, op: col.numero_op })
+        medicoes.push({ seq, label: `#${seq}`, x: a.valor, op: col.numero_op, emAndamento: col.status === 'rascunho' })
       }
     })
   })
@@ -309,6 +315,7 @@ function CartaIMR({ coletas, lse, lsi }: { coletas: ColetaDB[]; lse?: number; ls
     op: m.op,
     mr: mrArray[i],
     mrOOC: mrArray[i] > mrUCL,
+    emAndamento: m.emAndamento,
   }))
   const mrOOC = mrPontos.filter(p => p.mrOOC).length
 
@@ -323,8 +330,8 @@ function CartaIMR({ coletas, lse, lsi }: { coletas: ColetaDB[]; lse?: number; ls
 
   const iv = xInterval(medicoes.length)
 
-  type IPayload  = { label: string; op: string; x: number;  iOOC: boolean }
-  type MRPayload = { label: string; op: string; mr: number; mrOOC: boolean }
+  type IPayload  = { label: string; op: string; x: number;  iOOC: boolean; emAndamento: boolean }
+  type MRPayload = { label: string; op: string; mr: number; mrOOC: boolean; emAndamento: boolean }
 
   return (
     <div className="flex flex-col gap-6">
@@ -374,7 +381,7 @@ function CartaIMR({ coletas, lse, lsi }: { coletas: ColetaDB[]; lse?: number; ls
                   <div style={{ backgroundColor: '#1A3344', border: '1px solid #1E9FAC', borderRadius: 6, padding: '6px 10px' }}>
                     <p style={{ color: '#fff', fontWeight: 700, fontSize: 11, margin: 0 }}>{d.label} · OP {d.op}</p>
                     <p style={{ color: d.iOOC ? '#ef4444' : '#b3d4e0', fontSize: 11, margin: '2px 0 0' }}>
-                      {d.x.toFixed(4)} mm{d.iOOC ? ' ⚠️ OOC' : ''}
+                      {d.x.toFixed(4)} mm{d.iOOC ? ' ⚠️ OOC' : ''}{d.emAndamento ? ' 🔄' : ''}
                     </p>
                   </div>
                 )
@@ -477,10 +484,10 @@ export default function CartasControle() {
     try {
       const { data } = await supabase
         .from('cep_coletas')
-        // Agora buscamos 'amostras' (JSONB) para plotar 1 ponto por amostra individual
-        .select('id, created_at, ctq_id, numero_op, data_coleta, total_amostras, amostras')
+        // Inclui rascunhos também: amostras aparecem na carta em tempo real
+        // (sem filtro de status — finalizado e rascunho ambos contribuem)
+        .select('id, created_at, ctq_id, numero_op, data_coleta, total_amostras, amostras, status')
         .eq('ctq_id', ctqId)
-        .eq('status', 'finalizado')
         .order('data_coleta', { ascending: true })
         .order('created_at', { ascending: true })
       setColetas((data ?? []) as ColetaDB[])
@@ -587,6 +594,24 @@ export default function CartasControle() {
                 <strong>{totalColetado}</strong> amostra{totalColetado !== 1 ? 's' : ''} — recomenda-se mínimo de{' '}
                 <strong>20–25 pontos</strong> para limites de controle confiáveis.
               </p>
+            </div>
+          )}
+
+          {/* Legenda */}
+          {!carregando && totalColetado > 0 && (
+            <div className="flex flex-wrap gap-3 text-[10px] text-[#8FA3B0]">
+              <span className="flex items-center gap-1">
+                <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#1E9FAC" /></svg>
+                Coleta finalizada
+              </span>
+              <span className="flex items-center gap-1">
+                <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="white" stroke="#1E9FAC" strokeWidth="2" /></svg>
+                Em andamento (rascunho)
+              </span>
+              <span className="flex items-center gap-1">
+                <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#ef4444" /></svg>
+                Fora de controle
+              </span>
             </div>
           )}
 
