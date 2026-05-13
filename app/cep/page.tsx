@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import FormularioCEP from '@/components/FormularioCEP'
-import { salvarCEP, salvarRascunhoCEP, atualizarRascunhoCEP, buscarRascunhosCEP } from '../actions'
+import { salvarCEP, salvarRascunhoCEP, atualizarRascunhoCEP } from '../actions'
 import type { NovaCEPColeta, RascunhoCEP, DadosIniciaisCEP } from '@/lib/types'
 import { CTQS } from '@/lib/ctqs'
+import { supabase } from '@/lib/supabase'
 import Navegacao from '@/components/Navegacao'
 
 type Tela = 'home' | 'nova-coleta' | 'continuar-coleta'
@@ -17,12 +18,19 @@ export default function CEPPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
 
+  // Busca rascunhos diretamente pelo cliente Supabase (mais seguro em client components)
   const carregarRascunhos = useCallback(async () => {
+    setCarregando(true)
     try {
-      const dados = await buscarRascunhosCEP()
-      setRascunhos(dados)
+      const { data } = await supabase
+        .from('cep_coletas')
+        .select('*')
+        .eq('status', 'rascunho')
+        .order('created_at', { ascending: false })
+      setRascunhos((data ?? []) as RascunhoCEP[])
     } catch {
-      // silencioso
+      // tabela pode não existir ainda — falha silenciosa
+      setRascunhos([])
     } finally {
       setCarregando(false)
     }
@@ -71,8 +79,8 @@ export default function CEPPage() {
       await salvarCEP(dados, rascunhoId)
       voltar()
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao salvar.')
-      throw e
+      setErro(e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.')
+      // não relança — o FormularioCEP mostra o erro da página
     }
   }
 
@@ -86,7 +94,7 @@ export default function CEPPage() {
       }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao pausar.')
-      throw e
+      // não relança — o FormularioCEP cuida do estado interno
     }
   }
 
@@ -108,8 +116,8 @@ export default function CEPPage() {
               </div>
 
               {rascunhos.map(r => {
-                const preenchidas = r.amostras.length
-                const pct = Math.round((preenchidas / r.total_amostras) * 100)
+                const preenchidas = r.amostras?.length ?? 0
+                const pct = r.total_amostras > 0 ? Math.round((preenchidas / r.total_amostras) * 100) : 0
                 return (
                   <div key={r.id} className="bg-white border border-[#DDE4EA] rounded-xl p-4 shadow-sm flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-2">
@@ -126,17 +134,13 @@ export default function CEPPage() {
                       </span>
                     </div>
 
-                    {/* Barra de progresso */}
                     <div>
                       <div className="flex justify-between text-xs text-[#8FA3B0] mb-1">
                         <span>{preenchidas} de {r.total_amostras} amostras</span>
                         <span>{pct}%</span>
                       </div>
                       <div className="w-full bg-[#F2F5F7] rounded-full h-2">
-                        <div
-                          className="bg-[#1E9FAC] h-2 rounded-full transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
+                        <div className="bg-[#1E9FAC] h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
 
@@ -176,7 +180,7 @@ export default function CEPPage() {
     )
   }
 
-  // ── Tela de formulário (nova ou retomada) ─────────────────────────────────
+  // ── Tela de formulário ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F2F5F7] flex flex-col">
       <Navegacao />

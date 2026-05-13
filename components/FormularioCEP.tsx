@@ -172,7 +172,11 @@ export default function FormularioCEP({ dadosIniciais, onSalvar, onPausar }: Pro
     try {
       await onSalvar(montarPayload('finalizado'), rascunhoId)
       setResultado('salvo')
-    } finally { setSalvando(false) }
+    } catch {
+      // erro tratado pela página pai via setErro
+    } finally {
+      setSalvando(false)
+    }
   }
 
   async function pausar() {
@@ -180,7 +184,11 @@ export default function FormularioCEP({ dadosIniciais, onSalvar, onPausar }: Pro
     try {
       await onPausar(montarPayload('rascunho'), rascunhoId)
       setResultado('pausado')
-    } finally { setPausando(false) }
+    } catch {
+      // erro tratado pela página pai via setErro
+    } finally {
+      setPausando(false)
+    }
   }
 
   function resetar() {
