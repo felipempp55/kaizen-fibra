@@ -26,7 +26,11 @@ CREATE TABLE IF NOT EXISTS cep_coletas (
   valor_maximo    NUMERIC,
 
   -- Dados brutos (array JSON)
-  amostras        JSONB       NOT NULL
+  amostras        JSONB       NOT NULL DEFAULT '[]',
+
+  -- Status: 'rascunho' = coleta pausada, 'finalizado' = coleta concluída
+  status          TEXT        NOT NULL DEFAULT 'finalizado'
+                              CHECK (status IN ('rascunho', 'finalizado'))
 );
 
 -- Segurança: acesso público (mesma política do resto do app)

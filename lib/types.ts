@@ -65,6 +65,37 @@ export interface NovaCEPColeta {
   valor_minimo: number | null
   valor_maximo: number | null
   amostras: AmostraCEP[]
+  status: 'finalizado' | 'rascunho'
+}
+
+export interface RascunhoCEP {
+  id: string
+  created_at: string
+  ctq_id: string
+  ctq_nome: string
+  tipo: 'atributo' | 'variavel'
+  instrumento: string
+  data_coleta: string
+  numero_op: string
+  nome_operador: string
+  total_amostras: number
+  total_ok: number | null
+  total_nok: number | null
+  amostras: AmostraCEP[]
+  status: 'rascunho'
+}
+
+export interface DadosIniciaisCEP {
+  rascunhoId: string
+  ctq_id: string
+  ctq_nome: string
+  tipo: 'atributo' | 'variavel'
+  instrumento: string
+  dataColeta: string
+  numeroOP: string
+  nomeOperador: string
+  amostrasPreenchidas: AmostraCEP[]
+  totalAmostras: number
 }
 
 export type Database = {
