@@ -57,10 +57,7 @@ export default function Navegacao({ onReset }: Props) {
             📋 Apontamento
           </Link>
         )}
-        <Link href="/cep" className={tabClass(pathname === '/cep')}>
-          📈 CEP
-        </Link>
-        <Link href="/dashboard" className={tabClass(pathname === '/dashboard')}>
+<Link href="/dashboard" className={tabClass(pathname === '/dashboard')}>
           📊 Dashboard
         </Link>
       </nav>
