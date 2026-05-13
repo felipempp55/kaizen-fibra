@@ -114,8 +114,48 @@ function CartaP({ coletas }: { coletas: ColetaDB[] }) {
   )
 }
 
+// ─── Painel Cp/Cpk ───────────────────────────────────────────────────────────
+function PainelCapabilidade({ cp, cpk, lse, lsi }: { cp: number; cpk: number; lse: number; lsi: number }) {
+  function classCpk(v: number) {
+    if (v >= 1.67) return { cor: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Excelente' }
+    if (v >= 1.33) return { cor: 'text-[#1E9FAC]',  bg: 'bg-[#E6F6F8] border-[#1E9FAC]/30',  label: 'Capaz' }
+    if (v >= 1.00) return { cor: 'text-amber-600',   bg: 'bg-amber-50 border-amber-200',        label: 'Marginal' }
+    return              { cor: 'text-red-600',        bg: 'bg-red-50 border-red-200',            label: 'Incapaz' }
+  }
+  const { cor, bg, label } = classCpk(cpk)
+
+  return (
+    <div className={`rounded-xl border p-4 flex flex-col gap-3 ${bg}`}>
+      <div className="flex items-center justify-between">
+        <h4 className="text-[#1A3344] font-bold text-xs uppercase tracking-wider">Índices de Capacidade</h4>
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${cor} bg-white border`}>{label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white rounded-lg p-3 text-center border border-[#DDE4EA]">
+          <p className="text-[#8FA3B0] text-[9px] font-bold uppercase tracking-wider mb-0.5">Cp</p>
+          <p className="text-2xl font-black text-[#1A3344] font-mono">{arred(cp, 2)}</p>
+          <p className="text-[9px] text-[#8FA3B0] mt-0.5">Capacidade potencial</p>
+        </div>
+        <div className={`rounded-lg p-3 text-center border ${bg}`}>
+          <p className={`text-[9px] font-bold uppercase tracking-wider mb-0.5 ${cor}`}>Cpk</p>
+          <p className={`text-2xl font-black font-mono ${cor}`}>{arred(cpk, 2)}</p>
+          <p className="text-[9px] text-[#8FA3B0] mt-0.5">Capacidade real</p>
+        </div>
+      </div>
+      <div className="flex justify-between text-[10px] text-[#8FA3B0]">
+        <span>LSI = {lsi} mm</span>
+        <span>LSE = {lse} mm</span>
+        <span>Tol = {arred((lse - lsi) * 1000, 1)} µm</span>
+      </div>
+      <p className="text-[10px] text-[#8FA3B0] leading-snug">
+        Meta: Cpk ≥ 1,33 (capaz) · ≥ 1,67 (excelente) · σ̂ estimado por S̄/c₄(n)
+      </p>
+    </div>
+  )
+}
+
 // ─── Carta X̄-S (variável) ────────────────────────────────────────────────────
-function CartaXbarS({ coletas, n }: { coletas: ColetaDB[]; n: number }) {
+function CartaXbarS({ coletas, n, lse, lsi }: { coletas: ColetaDB[]; n: number; lse?: number; lsi?: number }) {
   const pontos = coletas
     .filter(d => d.media != null && d.desvio_padrao != null)
     .map(d => ({
@@ -127,13 +167,13 @@ function CartaXbarS({ coletas, n }: { coletas: ColetaDB[]; n: number }) {
   if (pontos.length === 0) return <SemDados />
 
   const xBarBar = arred(pontos.reduce((s, p) => s + p.media, 0) / pontos.length, 4)
-  const sBar = arred(pontos.reduce((s, p) => s + p.s, 0) / pontos.length, 4)
+  const sBar    = arred(pontos.reduce((s, p) => s + p.s, 0) / pontos.length, 4)
 
-  // Constantes Montgomery para n amostras por subgrupo
+  // Limites de controle — constantes Montgomery
   const xUCL = arred(xBarBar + A3(n) * sBar, 4)
   const xLCL = arred(xBarBar - A3(n) * sBar, 4)
-  const sUCL = arred(B4(n) * sBar, 4)
-  const sLCL = arred(B3(n) * sBar, 4)
+  const sUCL  = arred(B4(n) * sBar, 4)
+  const sLCL  = arred(B3(n) * sBar, 4)
 
   const pontosFinal = pontos.map(p => ({
     ...p,
@@ -144,15 +184,33 @@ function CartaXbarS({ coletas, n }: { coletas: ColetaDB[]; n: number }) {
   const xOOC = pontosFinal.filter(p => p.xOOC).length
   const sOOC = pontosFinal.filter(p => p.sOOC).length
 
-  // Domínios com margem
-  const xValores = pontosFinal.map(p => p.media)
-  const xMin = arred(Math.min(...xValores, xLCL) * 0.998, 4)
-  const xMax = arred(Math.max(...xValores, xUCL) * 1.002, 4)
+  // Cp / Cpk — σ̂ = S̄ / c4(n) (estimativa não viesada do desvio padrão do processo)
+  const sigmaHat = sBar / c4(n)
+  const temEspec = lse != null && lsi != null
+  const cp  = temEspec ? (lse! - lsi!) / (6 * sigmaHat) : null
+  const cpk = temEspec
+    ? Math.min((lse! - xBarBar) / (3 * sigmaHat), (xBarBar - lsi!) / (3 * sigmaHat))
+    : null
+
+  // Domínio do eixo Y da carta X̄ — inclui spec limits se existirem
+  const xValores  = pontosFinal.map(p => p.media)
+  const yMin = lsi != null ? Math.min(...xValores, xLCL, lsi) : Math.min(...xValores, xLCL)
+  const yMax = lse != null ? Math.max(...xValores, xUCL, lse) : Math.max(...xValores, xUCL)
+  const margem = (yMax - yMin) * 0.15 || 0.0002
+  const xDomMin = arred(yMin - margem, 5)
+  const xDomMax = arred(yMax + margem, 5)
+
   const sValores = pontosFinal.map(p => p.s)
-  const sMax = arred(Math.max(...sValores, sUCL) * 1.15, 4)
+  const sMax     = arred(Math.max(...sValores, sUCL) * 1.15, 4)
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* ── Cp / Cpk ── */}
+      {temEspec && cp != null && cpk != null && (
+        <PainelCapabilidade cp={cp} cpk={cpk} lse={lse!} lsi={lsi!} />
+      )}
+
       {/* ── Carta X̄ ── */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
@@ -161,19 +219,35 @@ function CartaXbarS({ coletas, n }: { coletas: ColetaDB[]; n: number }) {
         </div>
         <AlertaOOC count={xOOC} />
         <div className="grid grid-cols-3 gap-2">
-          <StatBox label="X̄̄ (linha central)" valor={xBarBar.toString()} cor="text-[#1E9FAC]" />
-          <StatBox label="LSC" valor={xUCL.toString()} cor="text-red-500" />
-          <StatBox label="LIC" valor={xLCL.toString()} cor="text-red-500" />
+          <StatBox label="X̄̄ (centro)" valor={xBarBar.toString()} cor="text-[#1E9FAC]" />
+          <StatBox label="LSC controle" valor={xUCL.toString()} cor="text-red-500" />
+          <StatBox label="LIC controle" valor={xLCL.toString()} cor="text-red-500" />
         </div>
-        <div className="text-[10px] text-[#8FA3B0] -mt-2">
-          A3={arred(A3(n), 3)} · n={n} · {pontos.length} subgrupo{pontos.length !== 1 ? 's' : ''}
+        {temEspec && (
+          <div className="grid grid-cols-2 gap-2">
+            <StatBox label="LSE espec." valor={`${lse} mm`} cor="text-orange-600" />
+            <StatBox label="LSI espec." valor={`${lsi} mm`} cor="text-orange-600" />
+          </div>
+        )}
+        <div className="text-[10px] text-[#8FA3B0] -mt-1">
+          A3={arred(A3(n), 3)} · n={n} · {pontos.length} subgrupo{pontos.length !== 1 ? 's' : ''} · σ̂={arred(sigmaHat, 5)} mm
         </div>
-        <ResponsiveContainer width="100%" height={210}>
-          <LineChart data={pontosFinal} margin={{ top: 8, right: 40, left: 0, bottom: 40 }}>
+        <ResponsiveContainer width="100%" height={230}>
+          <LineChart data={pontosFinal} margin={{ top: 8, right: 50, left: 0, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
             <XAxis dataKey="label" tick={{ fill: '#8FA3B0', fontSize: 10 }} angle={-30} textAnchor="end" interval={0} />
-            <YAxis tick={{ fill: '#8FA3B0', fontSize: 10 }} domain={[xMin, xMax]} />
-            <Tooltip {...TOOLTIP} formatter={(v) => [String(v), 'Média']} />
+            <YAxis tick={{ fill: '#8FA3B0', fontSize: 10 }} domain={[xDomMin, xDomMax]} />
+            <Tooltip {...TOOLTIP} formatter={(v) => [`${v} mm`, 'Média']} />
+            {/* Limites de especificação (laranja — mais externos) */}
+            {lse != null && (
+              <ReferenceLine y={lse} stroke="#f97316" strokeWidth={1.5}
+                label={{ value: `LSE ${lse}`, fill: '#f97316', fontSize: 9, position: 'right' }} />
+            )}
+            {lsi != null && (
+              <ReferenceLine y={lsi} stroke="#f97316" strokeWidth={1.5}
+                label={{ value: `LSI ${lsi}`, fill: '#f97316', fontSize: 9, position: 'right' }} />
+            )}
+            {/* Limites de controle (vermelho tracejado — mais internos) */}
             <ReferenceLine y={xUCL} stroke="#ef4444" strokeDasharray="5 3"
               label={{ value: `LSC`, fill: '#ef4444', fontSize: 9, position: 'right' }} />
             <ReferenceLine y={xBarBar} stroke="#1E9FAC" strokeDasharray="4 4"
@@ -196,11 +270,11 @@ function CartaXbarS({ coletas, n }: { coletas: ColetaDB[]; n: number }) {
         </div>
         <AlertaOOC count={sOOC} cor="azul" />
         <div className="grid grid-cols-3 gap-2">
-          <StatBox label="S̄ (linha central)" valor={sBar.toString()} cor="text-[#4A90D9]" />
+          <StatBox label="S̄ (centro)" valor={sBar.toString()} cor="text-[#4A90D9]" />
           <StatBox label="LSC" valor={sUCL.toString()} cor="text-red-500" />
           <StatBox label="LIC" valor={sLCL > 0 ? sLCL.toString() : '0'} cor="text-red-500" />
         </div>
-        <div className="text-[10px] text-[#8FA3B0] -mt-2">
+        <div className="text-[10px] text-[#8FA3B0] -mt-1">
           B3={arred(B3(n), 3)} · B4={arred(B4(n), 3)} · n={n}
         </div>
         <ResponsiveContainer width="100%" height={210}>
@@ -364,7 +438,9 @@ export default function CartasControle() {
           )}
 
           {!carregando && ctq.tipo === 'atributo' && <CartaP coletas={coletas} />}
-          {!carregando && ctq.tipo === 'variavel' && <CartaXbarS coletas={coletas} n={ctq.totalAmostras} />}
+          {!carregando && ctq.tipo === 'variavel' && (
+            <CartaXbarS coletas={coletas} n={ctq.totalAmostras} lse={ctq.lse} lsi={ctq.lsi} />
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-14 gap-3 text-[#8FA3B0]">

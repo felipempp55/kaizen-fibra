@@ -7,6 +7,10 @@ export interface CTQ {
   instrucao: string
   instrumento: string
   totalAmostras: number
+  /** Limite Superior de Especificação (apenas CTQs variável) */
+  lse?: number
+  /** Limite Inferior de Especificação (apenas CTQs variável) */
+  lsi?: number
 }
 
 export const CTQS: CTQ[] = [
@@ -25,6 +29,8 @@ export const CTQS: CTQ[] = [
     instrucao: 'Medição com relógio comparador pós etapa manual de polimento. I-PC-23, ITEM 4.6.7 — Antes de ir para a máquina.',
     instrumento: 'Relógio Comparador',
     totalAmostras: 56,
+    lse: 0.3905,  // mm — Pré-máquina
+    lsi: 0.3895,  // mm
   },
   {
     id: 'corte_uniforme',
@@ -41,5 +47,7 @@ export const CTQS: CTQ[] = [
     instrucao: 'Medição com relógio comparador conforme I-PC-23, ITEM 4.6.13.',
     instrumento: 'Relógio Comparador',
     totalAmostras: 56,
+    lse: 0.3865,  // mm — Pós-máquina
+    lsi: 0.3855,  // mm
   },
 ]
