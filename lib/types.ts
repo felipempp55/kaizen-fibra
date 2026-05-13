@@ -41,6 +41,32 @@ export interface NovoApontamento {
   observacao: string | null
 }
 
+// ─── CEP ───────────────────────────────────────────────────────────────────
+
+export interface AmostraCEP {
+  numero: number
+  resultado?: 'ok' | 'nok'
+  valor?: number
+}
+
+export interface NovaCEPColeta {
+  ctq_id: string
+  ctq_nome: string
+  tipo: 'atributo' | 'variavel'
+  instrumento: string
+  data_coleta: string
+  numero_op: string
+  nome_operador: string
+  total_amostras: number
+  total_ok: number | null
+  total_nok: number | null
+  media: number | null
+  desvio_padrao: number | null
+  valor_minimo: number | null
+  valor_maximo: number | null
+  amostras: AmostraCEP[]
+}
+
 export type Database = {
   public: {
     Tables: {

@@ -47,7 +47,7 @@ export default function Navegacao({ onReset }: Props) {
       </div>
 
       {/* Centro: tabs de navegação */}
-      <nav className="flex gap-2 justify-center">
+      <nav className="flex gap-1.5 justify-center">
         {pathname === '/' && onReset ? (
           <button onClick={onReset} className={tabClass(true)}>
             📋 Apontamento
@@ -57,6 +57,9 @@ export default function Navegacao({ onReset }: Props) {
             📋 Apontamento
           </Link>
         )}
+        <Link href="/cep" className={tabClass(pathname === '/cep')}>
+          📈 CEP
+        </Link>
         <Link href="/dashboard" className={tabClass(pathname === '/dashboard')}>
           📊 Dashboard
         </Link>
