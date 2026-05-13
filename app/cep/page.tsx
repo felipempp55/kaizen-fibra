@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import FormularioCEP from '@/components/FormularioCEP'
+import CartasControle from '@/components/CartasControle'
 import { salvarCEP, salvarRascunhoCEP, atualizarRascunhoCEP } from '../actions'
 import type { NovaCEPColeta, RascunhoCEP, DadosIniciaisCEP } from '@/lib/types'
 import { CTQS } from '@/lib/ctqs'
@@ -9,9 +10,11 @@ import { supabase } from '@/lib/supabase'
 import Navegacao from '@/components/Navegacao'
 
 type Tela = 'home' | 'nova-coleta' | 'continuar-coleta'
+type AbaHome = 'coletas' | 'cartas'
 
 export default function CEPPage() {
   const [tela, setTela] = useState<Tela>('home')
+  const [abaHome, setAbaHome] = useState<AbaHome>('coletas')
   const [rascunhos, setRascunhos] = useState<RascunhoCEP[]>([])
   const [rascunhoAtivo, setRascunhoAtivo] = useState<DadosIniciaisCEP | null>(null)
   const [formKey, setFormKey] = useState(0)
@@ -105,6 +108,32 @@ export default function CEPPage() {
         <Navegacao />
         <main className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full flex flex-col gap-4 mt-2">
 
+          {/* Abas: Coletas | Cartas de Controle */}
+          <div className="flex gap-2 bg-white border border-[#DDE4EA] rounded-xl p-1.5 shadow-sm">
+            {([
+              { id: 'coletas', label: '📋 Coletas' },
+              { id: 'cartas', label: '📈 Cartas de Controle' },
+            ] as { id: AbaHome; label: string }[]).map(aba => (
+              <button
+                key={aba.id}
+                onClick={() => setAbaHome(aba.id)}
+                className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all active:scale-95 ${
+                  abaHome === aba.id
+                    ? 'bg-[#1E9FAC] text-white'
+                    : 'text-[#8FA3B0] hover:text-[#1E9FAC]'
+                }`}
+              >
+                {aba.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Conteúdo da aba Cartas */}
+          {abaHome === 'cartas' && <CartasControle />}
+
+          {/* Conteúdo da aba Coletas */}
+          {abaHome === 'coletas' && <>
+
           {/* Rascunhos em aberto */}
           {!carregando && rascunhos.length > 0 && (
             <div className="flex flex-col gap-3">
@@ -175,6 +204,8 @@ export default function CEPPage() {
           {carregando && (
             <p className="text-center text-[#8FA3B0] text-sm">Carregando...</p>
           )}
+
+          </>}
         </main>
       </div>
     )
