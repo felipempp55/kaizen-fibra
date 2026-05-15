@@ -174,6 +174,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
               type="text"
               value={nomeOperador}
               onChange={(e) => setNomeOperador(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && podeContinuar()) avancar() }}
               placeholder="Digite o nome do operador"
               className="bg-white border-2 border-[#DDE4EA] text-[#1A3344] text-lg px-4 py-4 rounded-xl focus:border-[#1E9FAC] focus:outline-none placeholder:text-[#DDE4EA]"
             />
@@ -184,6 +185,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
             onChange={setNumeroOP}
             placeholder="ex: 000123456"
             maxLength={9}
+            onEnter={() => { if (podeContinuar()) avancar() }}
           />
         </div>
       )}
@@ -199,6 +201,8 @@ export default function FormularioApontamento({ onSalvar }: Props) {
           placeholder={tipoSelecionado.unidade === 'ml' ? 'ex: 5' : 'ex: 10'}
           maxLength={4}
           max={9999}
+          autoFocus
+          onEnter={() => { if (podeContinuar()) avancar() }}
         />
       )}
 
@@ -230,6 +234,8 @@ export default function FormularioApontamento({ onSalvar }: Props) {
                 placeholder="—"
                 max={999}
                 maxLength={3}
+                autoFocus
+                onEnter={() => { if (podeContinuar()) avancar() }}
               />
             </div>
           )}
@@ -245,6 +251,8 @@ export default function FormularioApontamento({ onSalvar }: Props) {
           placeholder="ex: 30"
           max={999}
           maxLength={3}
+          autoFocus
+          onEnter={() => { if (podeContinuar()) avancar() }}
         />
       )}
 

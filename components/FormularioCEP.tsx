@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { CTQS, type CTQ } from '@/lib/ctqs'
 import type { NovaCEPColeta, AmostraCEP, DadosIniciaisCEP } from '@/lib/types'
 import EtapaIndicador from './EtapaIndicador'
@@ -79,7 +79,17 @@ export default function FormularioCEP({ dadosIniciais, onSalvar, onPausar }: Pro
   const [pausando, setPausando] = useState(false)
   const [resultado, setResultado] = useState<'salvo' | 'pausado' | null>(null)
 
+  // Input oculto para capturar teclado físico no teclado decimal (amostras variável)
+  const decimalInputRef = useRef<HTMLInputElement>(null)
+
   const etapaAtual = SEQUENCIA[etapa]
+
+  // Foca o input decimal sempre que muda de amostra ou entra na etapa variável
+  useEffect(() => {
+    if (etapaAtual === 'amostras' && ctq?.tipo === 'variavel') {
+      decimalInputRef.current?.focus()
+    }
+  }, [etapaAtual, ctq?.tipo, indiceAtual])
   const rascunhoId = dadosIniciais?.rascunhoId
 
   function avancar() { setEtapa(e => Math.min(e + 1, SEQUENCIA.length - 1)) }
@@ -279,22 +289,26 @@ export default function FormularioCEP({ dadosIniciais, onSalvar, onPausar }: Pro
           <div className="flex flex-col gap-2">
             <label className="text-[#1A3344] text-sm font-semibold">Nome do Operador</label>
             <input type="text" value={nomeOperador} onChange={e => setNomeOperador(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && numeroOP && nomeOperador.trim() && instrumento.trim()) avancar() }}
               placeholder="Digite o nome do operador"
               className="bg-white border-2 border-[#DDE4EA] text-[#1A3344] text-base px-4 py-3 rounded-xl focus:border-[#1E9FAC] focus:outline-none placeholder:text-[#DDE4EA]" />
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-[#1A3344] text-sm font-semibold">Instrumento</label>
             <input type="text" value={instrumento} onChange={e => setInstrumento(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && numeroOP && nomeOperador.trim() && instrumento.trim()) avancar() }}
               placeholder="Nome ou código do instrumento"
               className="bg-white border-2 border-[#DDE4EA] text-[#1A3344] text-base px-4 py-3 rounded-xl focus:border-[#1E9FAC] focus:outline-none placeholder:text-[#DDE4EA]" />
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-[#1A3344] text-sm font-semibold">Data da Coleta</label>
             <input type="date" value={dataColeta} onChange={e => setDataColeta(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && numeroOP && nomeOperador.trim() && instrumento.trim()) avancar() }}
               className="bg-white border-2 border-[#DDE4EA] text-[#1A3344] text-base px-4 py-3 rounded-xl focus:border-[#1E9FAC] focus:outline-none" />
           </div>
           <TecladoNumerico label="Número da Ordem de Produção (OP)" valor={numeroOP}
-            onChange={setNumeroOP} placeholder="ex: 000123456" maxLength={9} />
+            onChange={setNumeroOP} placeholder="ex: 000123456" maxLength={9}
+            onEnter={() => { if (numeroOP && nomeOperador.trim() && instrumento.trim()) avancar() }} />
         </div>
       )}
 
@@ -387,7 +401,10 @@ export default function FormularioCEP({ dadosIniciais, onSalvar, onPausar }: Pro
             <span className="text-[#1A3344] font-bold">Amostra {variaveis[indiceAtual]?.numero}</span>
           </div>
 
-          <div className="bg-white border-2 border-[#1E9FAC] rounded-2xl px-6 py-5 flex flex-col items-center gap-1">
+          <div
+            className="bg-white border-2 border-[#1E9FAC] rounded-2xl px-6 py-5 flex flex-col items-center gap-1 cursor-text select-none"
+            onClick={() => decimalInputRef.current?.focus()}
+          >
             <p className="text-[#8FA3B0] text-xs font-medium">Amostra {variaveis[indiceAtual]?.numero} de {ctq.totalAmostras}</p>
             <div className="text-5xl font-black font-mono text-[#1A3344] min-h-[56px] flex items-center">
               {valorDigitado || variaveis[indiceAtual]?.valor
@@ -396,14 +413,42 @@ export default function FormularioCEP({ dadosIniciais, onSalvar, onPausar }: Pro
             </div>
           </div>
 
+          {/* Input oculto — captura teclado físico (inputMode=none evita teclado virtual) */}
+          <input
+            ref={decimalInputRef}
+            type="text"
+            inputMode="none"
+            readOnly
+            aria-hidden="true"
+            tabIndex={-1}
+            className="sr-only"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                salvarEAvancarVariavel()
+                setTimeout(() => decimalInputRef.current?.focus(), 30)
+                return
+              }
+              if (e.key === 'Backspace') { setValorDigitado(v => v.slice(0, -1)); return }
+              if (e.key === '.' || e.key === ',') {
+                if (!valorDigitado.includes('.')) setValorDigitado(v => v + '.')
+                return
+              }
+              if (e.key >= '0' && e.key <= '9') {
+                setValorDigitado(v => v + e.key)
+              }
+            }}
+          />
+
           {/* Teclado decimal */}
           <div className="grid grid-cols-3 gap-3">
             {['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(t => (
               <button key={t} type="button"
                 onClick={() => {
-                  if (t === '⌫') { setValorDigitado(v => v.slice(0, -1)); return }
-                  if (t === '.' && valorDigitado.includes('.')) return
+                  if (t === '⌫') { setValorDigitado(v => v.slice(0, -1)); decimalInputRef.current?.focus(); return }
+                  if (t === '.' && valorDigitado.includes('.')) { decimalInputRef.current?.focus(); return }
                   setValorDigitado(v => v + t)
+                  decimalInputRef.current?.focus()
                 }}
                 className={`h-14 rounded-xl text-xl font-bold transition-all active:scale-95 border ${
                   t === '⌫'
