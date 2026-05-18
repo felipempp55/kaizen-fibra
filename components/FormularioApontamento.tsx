@@ -7,12 +7,13 @@ import EtapaIndicador from './EtapaIndicador'
 import BotaoGrande from './BotaoGrande'
 import TecladoNumerico from './TecladoNumerico'
 
-type TipoEtapa = 'grupo' | 'tipo' | 'quantidade' | 'classificacao' | 'tempo' | 'confirmar'
+type TipoEtapa = 'grupo' | 'tipo' | 'quantidade' | 'segunda_quantidade' | 'classificacao' | 'tempo' | 'confirmar'
 
 const LABELS_ETAPA: Record<TipoEtapa, string> = {
   grupo: 'Grupo',
   tipo: 'Tipo',
   quantidade: 'Quantidade',
+  segunda_quantidade: 'Adicional',
   classificacao: 'Classificação',
   tempo: 'Tempo',
   confirmar: 'Confirmar',
@@ -21,6 +22,7 @@ const LABELS_ETAPA: Record<TipoEtapa, string> = {
 function getSequencia(tipo: TipoDesperdicio | null): TipoEtapa[] {
   const base: TipoEtapa[] = ['grupo', 'tipo', 'quantidade']
   if (!tipo) return [...base, 'confirmar']
+  if (tipo.segunda_quantidade) base.push('segunda_quantidade')
   if (tipo.classificacao !== 'nenhum') base.push('classificacao')
   if (tipo.tempo === 'sempre') base.push('tempo')
   base.push('confirmar')
@@ -43,6 +45,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
   const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null)
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoDesperdicio | null>(null)
   const [quantidade, setQuantidade] = useState('')
+  const [segundaQuantidade, setSegundaQuantidade] = useState('')
   const [classificacao, setClassificacao] = useState<Classificacao | null>(null)
   const [tempoMinutos, setTempoMinutos] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -66,6 +69,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
     setGrupoSelecionado(null)
     setTipoSelecionado(null)
     setQuantidade('')
+    setSegundaQuantidade('')
     setClassificacao(null)
     setTempoMinutos('')
     setSucesso(false)
@@ -81,8 +85,13 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         nome_operador: operador,
         numero_op: op.toUpperCase(),
         quantidade_pecas: tipoSelecionado.unidade === 'pecas' ? parseInt(quantidade) : null,
-        quantidade_ml: tipoSelecionado.unidade === 'ml' ? parseInt(quantidade) : null,
-        classificacao: tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null,
+        quantidade_ml: tipoSelecionado.unidade === 'ml'
+          ? parseInt(quantidade)
+          : (tipoSelecionado.segunda_quantidade && segundaQuantidade
+              ? parseInt(segundaQuantidade)
+              : null),
+        classificacao: tipoSelecionado.classificacao_fixa
+          ?? (tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null),
         tempo_minutos: tempoMinutos ? parseInt(tempoMinutos) : null,
         observacao: null,
       })
@@ -94,12 +103,16 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
 
   function podeContinuar(): boolean {
     switch (etapaAtual) {
-      case 'quantidade': return !!quantidade
+      case 'quantidade': return quantidade.length > 0
+      case 'segunda_quantidade': return segundaQuantidade.length > 0
       case 'classificacao': return !!classificacao
-      case 'tempo': return !!tempoMinutos
+      case 'tempo': return tempoMinutos.length > 0
       default: return true
     }
   }
+
+  const labelQtdPrincipal = tipoSelecionado?.label_quantidade
+    ?? (tipoSelecionado?.unidade === 'ml' ? 'Quantidade (ml)' : 'Quantidade de peças')
 
   if (sucesso) {
     return (
@@ -107,7 +120,11 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         <div className="text-8xl">✅</div>
         <h2 className="text-3xl font-bold text-[#1E9FAC] text-center">Apontamento Salvo!</h2>
         <p className="text-[#8FA3B0] text-center text-lg">
-          {tipoSelecionado?.nome} · OP {op} · {quantidade} {tipoSelecionado?.unidade === 'ml' ? 'ml' : 'peça(s)'}
+          {tipoSelecionado?.nome} · OP {op} · {quantidade}{' '}
+          {tipoSelecionado?.unidade === 'ml' ? 'ml' : 'peça(s)'}
+          {tipoSelecionado?.segunda_quantidade && segundaQuantidade
+            ? ` · ${segundaQuantidade} ${tipoSelecionado.segunda_quantidade.label.toLowerCase()}`
+            : ''}
         </p>
         <button
           onClick={resetar}
@@ -154,6 +171,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
                 setTipoSelecionado(t)
                 setClassificacao(null)
                 setTempoMinutos('')
+                setSegundaQuantidade('')
                 avancar()
               }}
             />
@@ -161,15 +179,27 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         </div>
       )}
 
-      {/* Quantidade */}
+      {/* Quantidade principal */}
       {etapaAtual === 'quantidade' && tipoSelecionado && (
         <TecladoNumerico
-          label={tipoSelecionado.unidade === 'ml'
-            ? 'Quantidade desperdiçada (ml)'
-            : 'Quantidade de peças afetadas'}
+          label={labelQtdPrincipal}
           valor={quantidade}
           onChange={setQuantidade}
           placeholder={tipoSelecionado.unidade === 'ml' ? 'ex: 5' : 'ex: 10'}
+          maxLength={4}
+          max={9999}
+          autoFocus
+          onEnter={() => { if (podeContinuar()) avancar() }}
+        />
+      )}
+
+      {/* Segunda quantidade */}
+      {etapaAtual === 'segunda_quantidade' && tipoSelecionado?.segunda_quantidade && (
+        <TecladoNumerico
+          label={tipoSelecionado.segunda_quantidade.label}
+          valor={segundaQuantidade}
+          onChange={setSegundaQuantidade}
+          placeholder="ex: 2"
           maxLength={4}
           max={9999}
           autoFocus
@@ -236,10 +266,13 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
             <Linha label="Operador" valor={operador} />
             <Linha label="Grupo" valor={grupoSelecionado ?? ''} />
             <Linha label="Tipo" valor={tipoSelecionado?.nome ?? ''} />
-            <Linha
-              label={tipoSelecionado?.unidade === 'ml' ? 'Quantidade (ml)' : 'Qtd. peças'}
-              valor={quantidade}
-            />
+            <Linha label={labelQtdPrincipal} valor={quantidade} />
+            {tipoSelecionado?.segunda_quantidade && segundaQuantidade && (
+              <Linha label={tipoSelecionado.segunda_quantidade.label} valor={segundaQuantidade} />
+            )}
+            {tipoSelecionado?.classificacao_fixa && (
+              <Linha label="Classificação" valor={tipoSelecionado.classificacao_fixa.toUpperCase()} />
+            )}
             {classificacao && <Linha label="Classificação" valor={classificacao.toUpperCase()} />}
             {tempoMinutos && <Linha label="Tempo" valor={`${tempoMinutos} min`} />}
           </div>

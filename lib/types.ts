@@ -8,6 +8,12 @@ export interface TipoDesperdicio {
   unidade: UnidadeMedida
   classificacao: OpcaoClassificacao
   tempo: OpcaoTempo
+  /** Quando definido, salva essa classificação automaticamente sem perguntar */
+  classificacao_fixa?: Classificacao
+  /** Label customizado para o campo de quantidade principal */
+  label_quantidade?: string
+  /** Quando definido, coleta uma segunda quantidade (armazenada em quantidade_ml) */
+  segunda_quantidade?: { label: string }
 }
 
 export interface GrupoDesperdicio {
