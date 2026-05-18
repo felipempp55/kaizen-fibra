@@ -1,20 +1,40 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import FormularioApontamento from '@/components/FormularioApontamento'
 import { salvarApontamento } from './actions'
 import type { NovoApontamento } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
 import TecladoNumerico from '@/components/TecladoNumerico'
 
+const STORAGE_KEY = 'kaizen-ops-abertas'
+
 interface OP {
   numero: string
   operador: string
 }
 
+function carregarDoStorage(): { ops: OP[]; opAtiva: OP | null } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return { ops: [], opAtiva: null }
+    const parsed = JSON.parse(raw)
+    const ops: OP[] = Array.isArray(parsed?.ops) ? parsed.ops : []
+    if (ops.length === 0) return { ops: [], opAtiva: null }
+    const savedAtiva: OP | null = parsed?.opAtiva ?? null
+    const opAtiva = savedAtiva && ops.some(o => o.numero === savedAtiva.numero)
+      ? savedAtiva
+      : ops[0]
+    return { ops, opAtiva }
+  } catch {
+    return { ops: [], opAtiva: null }
+  }
+}
+
 export default function Home() {
   const [ops, setOps] = useState<OP[]>([])
   const [opAtiva, setOpAtiva] = useState<OP | null>(null)
+  const [carregando, setCarregando] = useState(true)
   const [abrindoNovaOp, setAbrindoNovaOp] = useState(false)
   const [novoNumeroOP, setNovoNumeroOP] = useState('')
   const [novoOperador, setNovoOperador] = useState('')
@@ -22,10 +42,28 @@ export default function Home() {
   const [formKey, setFormKey] = useState(0)
 
   // Modal de confirmação para encerrar OP
-  const [modalFecharOp, setModalFecharOp] = useState<string | null>(null) // número da OP a fechar
+  const [modalFecharOp, setModalFecharOp] = useState<string | null>(null)
   const [authLogin, setAuthLogin] = useState('')
   const [authSenha, setAuthSenha] = useState('')
   const [authErro, setAuthErro] = useState(false)
+
+  // Evita gravar no localStorage antes de ter carregado
+  const persistindoAtivo = useRef(false)
+
+  // ── Carregar OPs do localStorage ao montar ───────────────────────────────────
+  useEffect(() => {
+    const { ops: savedOps, opAtiva: savedAtiva } = carregarDoStorage()
+    setOps(savedOps)
+    setOpAtiva(savedAtiva)
+    setCarregando(false)
+    persistindoAtivo.current = true
+  }, [])
+
+  // ── Salvar OPs no localStorage sempre que mudar ──────────────────────────────
+  useEffect(() => {
+    if (!persistindoAtivo.current) return
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ops, opAtiva }))
+  }, [ops, opAtiva])
 
   function podeSalvarOp() {
     return novoNumeroOP.trim().length > 0 && novoOperador.trim().length > 0
@@ -92,6 +130,11 @@ export default function Home() {
       setErro(e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.')
       throw e
     }
+  }
+
+  // ── Loading: evita flash de tela errada antes de carregar o localStorage ─────
+  if (carregando) {
+    return <div className="min-h-screen bg-[#F2F5F7]" />
   }
 
   // ── Tela: abrir OP ──────────────────────────────────────────────────────────
