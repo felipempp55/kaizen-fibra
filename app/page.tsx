@@ -21,6 +21,12 @@ export default function Home() {
   const [erro, setErro] = useState<string | null>(null)
   const [formKey, setFormKey] = useState(0)
 
+  // Modal de confirmação para encerrar OP
+  const [modalFecharOp, setModalFecharOp] = useState<string | null>(null) // número da OP a fechar
+  const [authLogin, setAuthLogin] = useState('')
+  const [authSenha, setAuthSenha] = useState('')
+  const [authErro, setAuthErro] = useState(false)
+
   function podeSalvarOp() {
     return novoNumeroOP.trim().length > 0 && novoOperador.trim().length > 0
   }
@@ -39,13 +45,32 @@ export default function Home() {
     setFormKey(k => k + 1)
   }
 
-  function fecharOp(numero: string) {
+  function solicitarFechamentoOp(numero: string) {
+    setModalFecharOp(numero)
+    setAuthLogin('')
+    setAuthSenha('')
+    setAuthErro(false)
+  }
+
+  function confirmarFechamentoOp() {
+    if (authLogin.trim().toLowerCase() !== 'qualidade' || authSenha !== 'pareto') {
+      setAuthErro(true)
+      setAuthSenha('')
+      return
+    }
+    const numero = modalFecharOp!
     const restantes = ops.filter(o => o.numero !== numero)
     setOps(restantes)
     if (opAtiva?.numero === numero) {
       setOpAtiva(restantes[0] ?? null)
       setFormKey(k => k + 1)
     }
+    setModalFecharOp(null)
+  }
+
+  function cancelarFechamentoOp() {
+    setModalFecharOp(null)
+    setAuthErro(false)
   }
 
   function selecionarOp(op: OP) {
@@ -152,7 +177,7 @@ export default function Home() {
               {op.numero} · {op.operador}
             </button>
             <button
-              onClick={() => fecharOp(op.numero)}
+              onClick={() => solicitarFechamentoOp(op.numero)}
               title="Encerrar OP"
               className="text-[#C4D0DA] hover:text-red-400 text-xs p-1.5 rounded transition-colors"
             >
@@ -185,6 +210,63 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* Modal: autorização para encerrar OP */}
+      {modalFecharOp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-6">
+            <div className="text-center">
+              <div className="text-4xl mb-2">🔒</div>
+              <h2 className="text-lg font-bold text-[#1A3344]">Encerrar OP {modalFecharOp}</h2>
+              <p className="text-[#8FA3B0] text-sm mt-1">Informe as credenciais de qualidade para continuar</p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[#1A3344] text-sm font-semibold">Login</label>
+                <input
+                  type="text"
+                  value={authLogin}
+                  onChange={e => { setAuthLogin(e.target.value); setAuthErro(false) }}
+                  onKeyDown={e => { if (e.key === 'Enter') confirmarFechamentoOp() }}
+                  placeholder="login"
+                  autoFocus
+                  className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[#1A3344] text-sm font-semibold">Senha</label>
+                <input
+                  type="password"
+                  value={authSenha}
+                  onChange={e => { setAuthSenha(e.target.value); setAuthErro(false) }}
+                  onKeyDown={e => { if (e.key === 'Enter') confirmarFechamentoOp() }}
+                  placeholder="••••••"
+                  className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none"
+                />
+              </div>
+              {authErro && (
+                <p className="text-red-500 text-sm text-center font-medium">Login ou senha incorretos</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={cancelarFechamentoOp}
+                className="flex-1 bg-white border border-[#DDE4EA] hover:border-[#1E9FAC] text-[#3D5568] font-semibold py-3 rounded-xl transition-all active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarFechamentoOp}
+                className="flex-1 bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold py-3 rounded-xl transition-all"
+              >
+                Encerrar OP
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
