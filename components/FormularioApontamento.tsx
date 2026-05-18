@@ -7,12 +7,11 @@ import EtapaIndicador from './EtapaIndicador'
 import BotaoGrande from './BotaoGrande'
 import TecladoNumerico from './TecladoNumerico'
 
-type TipoEtapa = 'grupo' | 'tipo' | 'op_operador' | 'quantidade' | 'classificacao' | 'tempo' | 'confirmar'
+type TipoEtapa = 'grupo' | 'tipo' | 'quantidade' | 'classificacao' | 'tempo' | 'confirmar'
 
 const LABELS_ETAPA: Record<TipoEtapa, string> = {
   grupo: 'Grupo',
   tipo: 'Tipo',
-  op_operador: 'OP / Operador',
   quantidade: 'Quantidade',
   classificacao: 'Classificação',
   tempo: 'Tempo',
@@ -20,7 +19,7 @@ const LABELS_ETAPA: Record<TipoEtapa, string> = {
 }
 
 function getSequencia(tipo: TipoDesperdicio | null): TipoEtapa[] {
-  const base: TipoEtapa[] = ['grupo', 'tipo', 'op_operador', 'quantidade']
+  const base: TipoEtapa[] = ['grupo', 'tipo', 'quantidade']
   if (!tipo) return [...base, 'confirmar']
   if (tipo.classificacao !== 'nenhum') base.push('classificacao')
   if (tipo.tempo === 'sempre') base.push('tempo')
@@ -34,15 +33,15 @@ const CLASSIFICACOES: { valor: Classificacao; label: string; cor: string }[] = [
 ]
 
 interface Props {
+  op: string
+  operador: string
   onSalvar: (dados: NovoApontamento) => Promise<void>
 }
 
-export default function FormularioApontamento({ onSalvar }: Props) {
+export default function FormularioApontamento({ op, operador, onSalvar }: Props) {
   const [etapa, setEtapa] = useState(0)
   const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null)
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoDesperdicio | null>(null)
-  const [nomeOperador, setNomeOperador] = useState('')
-  const [numeroOP, setNumeroOP] = useState('')
   const [quantidade, setQuantidade] = useState('')
   const [classificacao, setClassificacao] = useState<Classificacao | null>(null)
   const [tempoMinutos, setTempoMinutos] = useState('')
@@ -66,8 +65,6 @@ export default function FormularioApontamento({ onSalvar }: Props) {
     setEtapa(0)
     setGrupoSelecionado(null)
     setTipoSelecionado(null)
-    setNomeOperador('')
-    setNumeroOP('')
     setQuantidade('')
     setClassificacao(null)
     setTempoMinutos('')
@@ -75,14 +72,14 @@ export default function FormularioApontamento({ onSalvar }: Props) {
   }
 
   async function confirmar() {
-    if (!grupoSelecionado || !tipoSelecionado || !numeroOP || !nomeOperador.trim() || !quantidade) return
+    if (!grupoSelecionado || !tipoSelecionado || !quantidade) return
     setSalvando(true)
     try {
       await onSalvar({
         grupo: grupoSelecionado,
         tipo_desperdicio: tipoSelecionado.nome,
-        nome_operador: nomeOperador.trim(),
-        numero_op: numeroOP.toUpperCase(),
+        nome_operador: operador,
+        numero_op: op.toUpperCase(),
         quantidade_pecas: tipoSelecionado.unidade === 'pecas' ? parseInt(quantidade) : null,
         quantidade_ml: tipoSelecionado.unidade === 'ml' ? parseInt(quantidade) : null,
         classificacao: tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null,
@@ -97,7 +94,6 @@ export default function FormularioApontamento({ onSalvar }: Props) {
 
   function podeContinuar(): boolean {
     switch (etapaAtual) {
-      case 'op_operador': return !!numeroOP && !!nomeOperador.trim()
       case 'quantidade': return !!quantidade
       case 'classificacao': return !!classificacao
       case 'tempo': return !!tempoMinutos
@@ -111,7 +107,7 @@ export default function FormularioApontamento({ onSalvar }: Props) {
         <div className="text-8xl">✅</div>
         <h2 className="text-3xl font-bold text-[#1E9FAC] text-center">Apontamento Salvo!</h2>
         <p className="text-[#8FA3B0] text-center text-lg">
-          {tipoSelecionado?.nome} · OP {numeroOP.toUpperCase()} · {quantidade} {tipoSelecionado?.unidade === 'ml' ? 'ml' : 'peça(s)'}
+          {tipoSelecionado?.nome} · OP {op} · {quantidade} {tipoSelecionado?.unidade === 'ml' ? 'ml' : 'peça(s)'}
         </p>
         <button
           onClick={resetar}
@@ -162,31 +158,6 @@ export default function FormularioApontamento({ onSalvar }: Props) {
               }}
             />
           ))}
-        </div>
-      )}
-
-      {/* OP + Operador */}
-      {etapaAtual === 'op_operador' && (
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <label className="text-[#1A3344] text-base font-semibold">Nome do Operador</label>
-            <input
-              type="text"
-              value={nomeOperador}
-              onChange={(e) => setNomeOperador(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && podeContinuar()) avancar() }}
-              placeholder="Digite o nome do operador"
-              className="bg-white border-2 border-[#DDE4EA] text-[#1A3344] text-lg px-4 py-4 rounded-xl focus:border-[#1E9FAC] focus:outline-none placeholder:text-[#DDE4EA]"
-            />
-          </div>
-          <TecladoNumerico
-            label="Número da Ordem de Produção (OP)"
-            valor={numeroOP}
-            onChange={setNumeroOP}
-            placeholder="ex: 000123456"
-            maxLength={9}
-            onEnter={() => { if (podeContinuar()) avancar() }}
-          />
         </div>
       )}
 
@@ -261,10 +232,10 @@ export default function FormularioApontamento({ onSalvar }: Props) {
         <div className="flex flex-col gap-4">
           <h3 className="text-xl font-bold text-center text-[#1A3344] mb-2">Confirmar apontamento</h3>
           <div className="bg-white border border-[#DDE4EA] rounded-xl p-5 flex flex-col gap-3 text-base">
+            <Linha label="OP" valor={op} />
+            <Linha label="Operador" valor={operador} />
             <Linha label="Grupo" valor={grupoSelecionado ?? ''} />
             <Linha label="Tipo" valor={tipoSelecionado?.nome ?? ''} />
-            <Linha label="Operador" valor={nomeOperador} />
-            <Linha label="OP" valor={numeroOP.toUpperCase()} />
             <Linha
               label={tipoSelecionado?.unidade === 'ml' ? 'Quantidade (ml)' : 'Qtd. peças'}
               valor={quantidade}
