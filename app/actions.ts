@@ -52,3 +52,12 @@ export async function buscarRascunhosCEP(): Promise<RascunhoCEP[]> {
   if (error) throw new Error(error.message)
   return (data ?? []) as RascunhoCEP[]
 }
+
+// Exclui uma coleta (rascunho ou finalizada) pelo ID
+export async function excluirColetaCEP(id: string) {
+  const { error } = await supabase
+    .from('cep_coletas')
+    .delete()
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}

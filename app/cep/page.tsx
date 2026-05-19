@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import FormularioCEP from '@/components/FormularioCEP'
 import CartasControle from '@/components/CartasControle'
-import { salvarCEP, salvarRascunhoCEP, atualizarRascunhoCEP } from '../actions'
+import { salvarCEP, salvarRascunhoCEP, atualizarRascunhoCEP, excluirColetaCEP } from '../actions'
 import type { NovaCEPColeta, RascunhoCEP, DadosIniciaisCEP } from '@/lib/types'
 import { CTQS } from '@/lib/ctqs'
 import { supabase } from '@/lib/supabase'
@@ -20,6 +20,13 @@ export default function CEPPage() {
   const [formKey, setFormKey] = useState(0)
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
+
+  // Modal de exclusão
+  const [modalExcluirId, setModalExcluirId] = useState<string | null>(null)
+  const [authLogin, setAuthLogin] = useState('')
+  const [authSenha, setAuthSenha] = useState('')
+  const [authErro, setAuthErro] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
 
   // Busca rascunhos diretamente pelo cliente Supabase (mais seguro em client components)
   const carregarRascunhos = useCallback(async () => {
@@ -40,6 +47,37 @@ export default function CEPPage() {
   }, [])
 
   useEffect(() => { carregarRascunhos() }, [carregarRascunhos])
+
+  function solicitarExclusao(id: string) {
+    setModalExcluirId(id)
+    setAuthLogin('')
+    setAuthSenha('')
+    setAuthErro(false)
+  }
+
+  async function confirmarExclusao() {
+    if (authLogin.trim().toLowerCase() !== 'qualidade' || authSenha !== 'pareto') {
+      setAuthErro(true)
+      setAuthSenha('')
+      return
+    }
+    setExcluindo(true)
+    try {
+      await excluirColetaCEP(modalExcluirId!)
+      setModalExcluirId(null)
+      carregarRascunhos()
+    } catch {
+      setAuthErro(false)
+      setModalExcluirId(null)
+    } finally {
+      setExcluindo(false)
+    }
+  }
+
+  function cancelarExclusao() {
+    setModalExcluirId(null)
+    setAuthErro(false)
+  }
 
   function voltar() {
     setTela('home')
@@ -175,12 +213,21 @@ export default function CEPPage() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => continuarRascunho(r)}
-                      className="w-full bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 text-white font-bold py-3 rounded-xl transition-all text-sm"
-                    >
-                      🔄 Continuar Coleta
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => continuarRascunho(r)}
+                        className="flex-1 bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 text-white font-bold py-3 rounded-xl transition-all text-sm"
+                      >
+                        🔄 Continuar Coleta
+                      </button>
+                      <button
+                        onClick={() => solicitarExclusao(r.id)}
+                        className="bg-white border border-[#DDE4EA] hover:border-red-300 hover:text-red-500 active:scale-95 text-[#8FA3B0] px-4 py-3 rounded-xl transition-all text-sm"
+                        title="Excluir coleta"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 )
               })}
@@ -209,6 +256,64 @@ export default function CEPPage() {
 
           </>}
         </main>
+
+        {/* Modal: autorização para excluir coleta */}
+        {modalExcluirId && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-6">
+              <div className="text-center">
+                <div className="text-4xl mb-2">🗑️</div>
+                <h2 className="text-lg font-bold text-[#1A3344]">Excluir Coleta</h2>
+                <p className="text-[#8FA3B0] text-sm mt-1">Informe as credenciais de qualidade para continuar</p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[#1A3344] text-sm font-semibold">Login</label>
+                  <input
+                    type="text"
+                    value={authLogin}
+                    onChange={e => { setAuthLogin(e.target.value); setAuthErro(false) }}
+                    onKeyDown={e => { if (e.key === 'Enter') confirmarExclusao() }}
+                    placeholder="login"
+                    autoFocus
+                    className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[#1A3344] text-sm font-semibold">Senha</label>
+                  <input
+                    type="password"
+                    value={authSenha}
+                    onChange={e => { setAuthSenha(e.target.value); setAuthErro(false) }}
+                    onKeyDown={e => { if (e.key === 'Enter') confirmarExclusao() }}
+                    placeholder="••••••"
+                    className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none"
+                  />
+                </div>
+                {authErro && (
+                  <p className="text-red-500 text-sm text-center font-medium">Login ou senha incorretos</p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelarExclusao}
+                  className="flex-1 bg-white border border-[#DDE4EA] hover:border-[#1E9FAC] text-[#3D5568] font-semibold py-3 rounded-xl transition-all active:scale-95"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarExclusao}
+                  disabled={excluindo}
+                  className="flex-1 bg-red-500 hover:bg-red-600 active:scale-95 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  {excluindo ? 'Excluindo…' : 'Excluir'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
