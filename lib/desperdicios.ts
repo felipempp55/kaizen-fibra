@@ -11,6 +11,7 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
         tempo: 'nunca',
         classificacao_fixa: 'perda',
         label_quantidade: 'Quantidade perdida (peças)',
+        input: 'contador',
       },
       {
         nome: 'Quantidade desperdiçada de Epóxi',

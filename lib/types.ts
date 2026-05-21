@@ -3,6 +3,8 @@ export type UnidadeMedida = 'pecas' | 'ml'
 export type OpcaoClassificacao = 'perda_retrabalho' | 'nenhum'
 export type OpcaoTempo = 'sempre' | 'nunca' | 'se_retrabalho'
 
+export type OpcaoInput = 'teclado' | 'contador'
+
 export interface TipoDesperdicio {
   nome: string
   unidade: UnidadeMedida
@@ -14,6 +16,8 @@ export interface TipoDesperdicio {
   label_quantidade?: string
   /** Quando definido, coleta uma segunda quantidade (armazenada em quantidade_ml) */
   segunda_quantidade?: { label: string }
+  /** Forma de entrada da quantidade principal: teclado numérico (padrão) ou contador +1 */
+  input?: OpcaoInput
 }
 
 export interface GrupoDesperdicio {

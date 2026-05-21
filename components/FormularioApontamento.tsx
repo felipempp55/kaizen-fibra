@@ -179,8 +179,49 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         </div>
       )}
 
-      {/* Quantidade principal */}
-      {etapaAtual === 'quantidade' && tipoSelecionado && (
+      {/* Quantidade principal — contador +1 */}
+      {etapaAtual === 'quantidade' && tipoSelecionado?.input === 'contador' && (
+        <div className="flex flex-col items-center gap-6">
+          <p className="text-[#1A3344] text-base font-semibold text-center">{labelQtdPrincipal}</p>
+
+          {/* Visor do contador */}
+          <div className="bg-[#F2F5F7] border-2 border-[#DDE4EA] rounded-2xl w-full py-6 flex flex-col items-center gap-1">
+            <span className="text-7xl font-black font-mono text-[#1A3344] leading-none tabular-nums">
+              {quantidade === '' ? '0' : quantidade}
+            </span>
+            <span className="text-[#8FA3B0] text-sm font-medium mt-1">
+              {Number(quantidade || 0) === 1 ? 'peça perdida' : 'peças perdidas'}
+            </span>
+          </div>
+
+          {/* Botão +1 */}
+          <button
+            onClick={() => {
+              const atual = parseInt(quantidade || '0')
+              if (atual < 9999) setQuantidade(String(atual + 1))
+            }}
+            className="w-full bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 active:bg-[#0f6470] text-white font-black text-5xl py-10 rounded-2xl transition-all shadow-md select-none"
+          >
+            +1
+          </button>
+
+          {/* Botão desfazer */}
+          {Number(quantidade || 0) > 0 && (
+            <button
+              onClick={() => {
+                const atual = parseInt(quantidade || '0')
+                setQuantidade(atual > 1 ? String(atual - 1) : '')
+              }}
+              className="text-[#8FA3B0] hover:text-red-400 text-sm font-medium transition-colors"
+            >
+              ← Desfazer último
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Quantidade principal — teclado numérico */}
+      {etapaAtual === 'quantidade' && tipoSelecionado && tipoSelecionado.input !== 'contador' && (
         <TecladoNumerico
           label={labelQtdPrincipal}
           valor={quantidade}
