@@ -1,6 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+// ─── Cronômetro persistente ───────────────────────────────────────────────────
+const TIMER_KEY = 'kaizen-timer-retrabalho'
+
+interface TimerState {
+  status: 'parado' | 'rodando' | 'pausado'
+  elapsed: number       // ms acumulados antes do run atual
+  startAt: number | null  // Date.now() quando o run atual começou
+}
+
+const TIMER_INICIAL: TimerState = { status: 'parado', elapsed: 0, startAt: null }
+
+function loadTimer(): TimerState {
+  try {
+    const raw = localStorage.getItem(TIMER_KEY)
+    if (raw) return JSON.parse(raw) as TimerState
+  } catch {}
+  return TIMER_INICIAL
+}
+
+function saveTimer(t: TimerState) {
+  try { localStorage.setItem(TIMER_KEY, JSON.stringify(t)) } catch {}
+}
+
+function formatMs(ms: number): string {
+  const totalSec = Math.floor(ms / 1000)
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 import { GRUPOS_DESPERDICIO } from '@/lib/desperdicios'
 import type { Classificacao, NovoApontamento, TipoDesperdicio } from '@/lib/types'
 import EtapaIndicador from './EtapaIndicador'
@@ -42,6 +74,42 @@ interface Props {
 }
 
 export default function FormularioApontamento({ op, operador, onSalvar }: Props) {
+  // ── Cronômetro ──────────────────────────────────────────────────────────────
+  const [timer, setTimer] = useState<TimerState>(TIMER_INICIAL)
+  const [agora, setAgora] = useState(Date.now())
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Carrega do localStorage ao montar
+  useEffect(() => { setTimer(loadTimer()) }, [])
+
+  // Inicia/para o tick a cada 500ms conforme status
+  useEffect(() => {
+    if (timer.status === 'rodando') {
+      tickRef.current = setInterval(() => setAgora(Date.now()), 500)
+    } else {
+      if (tickRef.current) clearInterval(tickRef.current)
+    }
+    return () => { if (tickRef.current) clearInterval(tickRef.current) }
+  }, [timer.status])
+
+  const displayMs = timer.status === 'rodando' && timer.startAt != null
+    ? timer.elapsed + (agora - timer.startAt)
+    : timer.elapsed
+
+  function iniciarTimer() {
+    const novo: TimerState = { status: 'rodando', elapsed: timer.elapsed, startAt: Date.now() }
+    setTimer(novo); saveTimer(novo)
+  }
+  function pausarTimer() {
+    const elapsed = timer.elapsed + (timer.startAt != null ? Date.now() - timer.startAt : 0)
+    const novo: TimerState = { status: 'pausado', elapsed, startAt: null }
+    setTimer(novo); saveTimer(novo)
+  }
+  function concluirTimer() {
+    setTimer(TIMER_INICIAL); saveTimer(TIMER_INICIAL)
+  }
+
+  // ── Formulário ───────────────────────────────────────────────────────────────
   const [etapa, setEtapa] = useState(0)
   const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null)
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoDesperdicio | null>(null)
@@ -145,19 +213,84 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
 
       {/* Grupo */}
       {etapaAtual === 'grupo' && (
-        <div className="grid grid-cols-2 gap-3">
-          {GRUPOS_DESPERDICIO.map((g) => (
-            <BotaoGrande
-              key={g.nome}
-              label={g.nome}
-              selecionado={grupoSelecionado === g.nome}
-              onClick={() => {
-                setGrupoSelecionado(g.nome)
-                setTipoSelecionado(null)
-                avancar()
-              }}
-            />
-          ))}
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            {GRUPOS_DESPERDICIO.map((g) => (
+              <BotaoGrande
+                key={g.nome}
+                label={g.nome}
+                selecionado={grupoSelecionado === g.nome}
+                onClick={() => {
+                  setGrupoSelecionado(g.nome)
+                  setTipoSelecionado(null)
+                  avancar()
+                }}
+              />
+            ))}
+          </div>
+
+          {/* ── Cronômetro de Retrabalho ─────────────────────────────────────── */}
+          <div className={`rounded-xl border-2 p-4 flex flex-col gap-3 transition-colors ${
+            timer.status === 'rodando' ? 'border-[#1E9FAC] bg-[#E6F6F8]' :
+            timer.status === 'pausado' ? 'border-amber-300 bg-amber-50' :
+            'border-[#DDE4EA] bg-[#F2F5F7]'
+          }`}>
+            {/* Título */}
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${
+                timer.status === 'rodando' ? 'bg-[#1E9FAC] animate-pulse' :
+                timer.status === 'pausado' ? 'bg-amber-400' : 'bg-[#C4D0DA]'
+              }`} />
+              <p className="text-[#1A3344] text-xs font-bold uppercase tracking-wider">
+                Retrabalho Manual Pós Máquina
+              </p>
+            </div>
+
+            {/* Display do tempo */}
+            <p className={`text-5xl font-black font-mono tabular-nums text-center py-2 ${
+              timer.status === 'rodando' ? 'text-[#1E9FAC]' :
+              timer.status === 'pausado' ? 'text-amber-600' :
+              'text-[#C4D0DA]'
+            }`}>
+              {formatMs(displayMs)}
+            </p>
+
+            {/* Botões */}
+            <div className="flex gap-2">
+              {timer.status === 'parado' && (
+                <button
+                  onClick={iniciarTimer}
+                  className="flex-1 bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  ▶ Iniciar
+                </button>
+              )}
+              {timer.status === 'rodando' && (
+                <button
+                  onClick={pausarTimer}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  ⏸ Pausar
+                </button>
+              )}
+              {timer.status === 'pausado' && (
+                <button
+                  onClick={iniciarTimer}
+                  className="flex-1 bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  ▶ Retomar
+                </button>
+              )}
+              {timer.status !== 'parado' && (
+                <button
+                  onClick={concluirTimer}
+                  className="flex-1 bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  ✓ Concluir
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
