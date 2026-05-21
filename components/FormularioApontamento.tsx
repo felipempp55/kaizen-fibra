@@ -527,7 +527,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
           <h3 className="text-xl font-bold text-center text-[#1A3344] mb-2">Confirmar apontamento</h3>
           <div className="bg-white border border-[#DDE4EA] rounded-xl p-5 flex flex-col gap-3 text-base">
             <Linha label="OP" valor={op} />
-            <Linha label="Operador" valor={operador} />
+            {operador && <Linha label="Operador" valor={operador} />}
             <Linha label="Grupo" valor={grupoSelecionado ?? ''} />
             <Linha label="Tipo" valor={tipoSelecionado?.nome ?? ''} />
             <Linha label={labelQtdPrincipal} valor={quantidade} />

@@ -11,7 +11,6 @@ const STORAGE_KEY = 'kaizen-ops-abertas'
 
 interface OP {
   numero: string
-  operador: string
 }
 
 function carregarDoStorage(): { ops: OP[]; opAtiva: OP | null } {
@@ -37,7 +36,6 @@ export default function Home() {
   const [carregando, setCarregando] = useState(true)
   const [abrindoNovaOp, setAbrindoNovaOp] = useState(false)
   const [novoNumeroOP, setNovoNumeroOP] = useState('')
-  const [novoOperador, setNovoOperador] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [formKey, setFormKey] = useState(0)
 
@@ -66,19 +64,17 @@ export default function Home() {
   }, [ops, opAtiva])
 
   function podeSalvarOp() {
-    return novoNumeroOP.trim().length > 0 && novoOperador.trim().length > 0
+    return novoNumeroOP.trim().length > 0
   }
 
   function confirmarNovaOp() {
     if (!podeSalvarOp()) return
     const nova: OP = {
       numero: novoNumeroOP.trim().toUpperCase(),
-      operador: novoOperador.trim(),
     }
     setOps(prev => [...prev.filter(o => o.numero !== nova.numero), nova])
     setOpAtiva(nova)
     setNovoNumeroOP('')
-    setNovoOperador('')
     setAbrindoNovaOp(false)
     setFormKey(k => k + 1)
   }
@@ -146,7 +142,7 @@ export default function Home() {
         <main className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full flex flex-col gap-4 mt-4">
           {abrindoNovaOp && (
             <button
-              onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP(''); setNovoOperador('') }}
+              onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP('') }}
               className="text-[#8FA3B0] text-sm self-start flex items-center gap-1 hover:text-[#1A3344] transition-colors"
             >
               ← Cancelar
@@ -162,19 +158,6 @@ export default function Home() {
               <p className="text-[#8FA3B0] text-sm mt-1">
                 Informe a OP e o operador para começar os apontamentos
               </p>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-[#1A3344] text-base font-semibold">Nome do Operador</label>
-              <input
-                type="text"
-                value={novoOperador}
-                onChange={e => setNovoOperador(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && podeSalvarOp()) confirmarNovaOp() }}
-                placeholder="Digite o nome do operador"
-                autoFocus
-                className="bg-white border-2 border-[#DDE4EA] text-[#1A3344] text-lg px-4 py-4 rounded-xl focus:border-[#1E9FAC] focus:outline-none placeholder:text-[#DDE4EA]"
-              />
             </div>
 
             <TecladoNumerico
@@ -217,7 +200,7 @@ export default function Home() {
                   : 'bg-[#F2F5F7] text-[#1A3344] hover:bg-[#E6F6F8] border border-[#DDE4EA]'
               }`}
             >
-              {op.numero} · {op.operador}
+              {op.numero}
             </button>
             <button
               onClick={() => solicitarFechamentoOp(op.numero)}
@@ -247,7 +230,7 @@ export default function Home() {
             <FormularioApontamento
               key={formKey}
               op={opAtiva.numero}
-              operador={opAtiva.operador}
+              operador=""
               onSalvar={handleSalvar}
             />
           )}
