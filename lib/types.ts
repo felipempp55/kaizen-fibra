@@ -3,7 +3,7 @@ export type UnidadeMedida = 'pecas' | 'ml'
 export type OpcaoClassificacao = 'perda_retrabalho' | 'nenhum'
 export type OpcaoTempo = 'sempre' | 'nunca' | 'se_retrabalho'
 
-export type OpcaoInput = 'teclado' | 'contador'
+export type OpcaoInput = 'teclado' | 'contador' | 'contador_duplo'
 
 export interface TipoDesperdicio {
   nome: string

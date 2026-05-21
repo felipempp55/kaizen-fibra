@@ -39,6 +39,7 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
         tempo: 'nunca',
         label_quantidade: 'Peças enviadas ao retrabalho manual',
         segunda_quantidade: { label: 'Peças perdidas no retrabalho' },
+        input: 'contador_duplo',
       },
     ],
   },

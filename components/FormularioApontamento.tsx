@@ -22,7 +22,8 @@ const LABELS_ETAPA: Record<TipoEtapa, string> = {
 function getSequencia(tipo: TipoDesperdicio | null): TipoEtapa[] {
   const base: TipoEtapa[] = ['grupo', 'tipo', 'quantidade']
   if (!tipo) return [...base, 'confirmar']
-  if (tipo.segunda_quantidade) base.push('segunda_quantidade')
+  // contador_duplo mostra as duas quantidades na mesma tela — não gera etapa separada
+  if (tipo.segunda_quantidade && tipo.input !== 'contador_duplo') base.push('segunda_quantidade')
   if (tipo.classificacao !== 'nenhum') base.push('classificacao')
   if (tipo.tempo === 'sempre') base.push('tempo')
   base.push('confirmar')
@@ -87,8 +88,8 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         quantidade_pecas: tipoSelecionado.unidade === 'pecas' ? parseInt(quantidade) : null,
         quantidade_ml: tipoSelecionado.unidade === 'ml'
           ? parseInt(quantidade)
-          : (tipoSelecionado.segunda_quantidade && segundaQuantidade
-              ? parseInt(segundaQuantidade)
+          : (tipoSelecionado.segunda_quantidade
+              ? parseInt(segundaQuantidade || '0')
               : null),
         classificacao: tipoSelecionado.classificacao_fixa
           ?? (tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null),
@@ -103,7 +104,9 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
 
   function podeContinuar(): boolean {
     switch (etapaAtual) {
-      case 'quantidade': return quantidade.length > 0
+      case 'quantidade':
+        if (tipoSelecionado?.input === 'contador_duplo') return parseInt(quantidade || '0') > 0
+        return quantidade.length > 0
       case 'segunda_quantidade': return segundaQuantidade.length > 0
       case 'classificacao': return !!classificacao
       case 'tempo': return tempoMinutos.length > 0
@@ -176,6 +179,76 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
               }}
             />
           ))}
+        </div>
+      )}
+
+      {/* Quantidade principal — contador duplo (dois contadores na mesma tela) */}
+      {etapaAtual === 'quantidade' && tipoSelecionado?.input === 'contador_duplo' && (
+        <div className="flex flex-col gap-5">
+
+          {/* Contador 1 */}
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-[#1A3344] text-sm font-semibold text-center">{labelQtdPrincipal}</p>
+            <div className="bg-[#F2F5F7] border-2 border-[#DDE4EA] rounded-2xl w-full py-4 flex items-center justify-center gap-4">
+              <span className="text-6xl font-black font-mono text-[#1A3344] tabular-nums w-24 text-center">
+                {quantidade === '' ? '0' : quantidade}
+              </span>
+            </div>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => {
+                  const atual = parseInt(quantidade || '0')
+                  if (atual > 0) setQuantidade(atual > 1 ? String(atual - 1) : '')
+                }}
+                className="bg-white border border-[#DDE4EA] hover:border-red-300 hover:text-red-400 active:scale-95 text-[#8FA3B0] font-bold text-xl px-5 py-4 rounded-xl transition-all"
+              >
+                −1
+              </button>
+              <button
+                onClick={() => {
+                  const atual = parseInt(quantidade || '0')
+                  if (atual < 9999) setQuantidade(String(atual + 1))
+                }}
+                className="flex-1 bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 active:bg-[#0f6470] text-white font-black text-4xl py-4 rounded-xl transition-all shadow-md select-none"
+              >
+                +1
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-[#DDE4EA]" />
+
+          {/* Contador 2 */}
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-[#1A3344] text-sm font-semibold text-center">
+              {tipoSelecionado.segunda_quantidade?.label}
+            </p>
+            <div className="bg-[#F2F5F7] border-2 border-[#DDE4EA] rounded-2xl w-full py-4 flex items-center justify-center gap-4">
+              <span className="text-6xl font-black font-mono text-[#1A3344] tabular-nums w-24 text-center">
+                {segundaQuantidade === '' ? '0' : segundaQuantidade}
+              </span>
+            </div>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => {
+                  const atual = parseInt(segundaQuantidade || '0')
+                  if (atual > 0) setSegundaQuantidade(atual > 1 ? String(atual - 1) : '')
+                }}
+                className="bg-white border border-[#DDE4EA] hover:border-red-300 hover:text-red-400 active:scale-95 text-[#8FA3B0] font-bold text-xl px-5 py-4 rounded-xl transition-all"
+              >
+                −1
+              </button>
+              <button
+                onClick={() => {
+                  const atual = parseInt(segundaQuantidade || '0')
+                  if (atual < 9999) setSegundaQuantidade(String(atual + 1))
+                }}
+                className="flex-1 bg-red-400 hover:bg-red-500 active:scale-95 text-white font-black text-4xl py-4 rounded-xl transition-all shadow-md select-none"
+              >
+                +1
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
