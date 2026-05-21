@@ -36,7 +36,7 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
         nome: 'Máquina',
         unidade: 'pecas',
         classificacao: 'nenhum',
-        tempo: 'sempre',
+        tempo: 'nunca',
         label_quantidade: 'Peças enviadas ao retrabalho manual',
         segunda_quantidade: { label: 'Peças perdidas no retrabalho' },
       },
