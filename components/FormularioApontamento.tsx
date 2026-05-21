@@ -249,6 +249,23 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
               </button>
             </div>
           </div>
+
+          {/* Navegação embutida — substitui a barra genérica */}
+          <div className="flex gap-3 pt-2 border-t border-[#DDE4EA]">
+            <button
+              onClick={voltar}
+              className="flex-1 bg-white border border-[#DDE4EA] hover:border-[#1E9FAC] hover:text-[#1E9FAC] active:scale-95 text-[#3D5568] font-semibold text-lg py-4 rounded-xl transition-all"
+            >
+              ← Voltar
+            </button>
+            <button
+              onClick={avancar}
+              disabled={parseInt(quantidade || '0') === 0}
+              className="flex-1 bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 disabled:opacity-40 text-white font-bold text-lg py-4 rounded-xl transition-all"
+            >
+              Continuar →
+            </button>
+          </div>
         </div>
       )}
 
@@ -400,8 +417,8 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         </div>
       )}
 
-      {/* Navegação */}
-      <div className="flex gap-3 mt-2">
+      {/* Navegação — oculta no contador_duplo (tem navegação própria embutida) */}
+      <div className={`flex gap-3 mt-2 ${etapaAtual === 'quantidade' && tipoSelecionado?.input === 'contador_duplo' ? 'hidden' : ''}`}>
         {etapa > 0 && (
           <button
             onClick={voltar}
