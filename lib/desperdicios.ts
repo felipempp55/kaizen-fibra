@@ -30,6 +30,7 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
         classificacao: 'nenhum',
         tempo: 'nunca',
         label_quantidade: 'Quantidade atingida (peças)',
+        input: 'contador',
       },
       {
         nome: 'Máquina',

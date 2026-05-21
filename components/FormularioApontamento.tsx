@@ -190,7 +190,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
               {quantidade === '' ? '0' : quantidade}
             </span>
             <span className="text-[#8FA3B0] text-sm font-medium mt-1">
-              {Number(quantidade || 0) === 1 ? 'peça perdida' : 'peças perdidas'}
+              {labelQtdPrincipal}
             </span>
           </div>
 
