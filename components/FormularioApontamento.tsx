@@ -311,7 +311,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
       )}
 
       {/* Quantidade principal — teclado numérico */}
-      {etapaAtual === 'quantidade' && tipoSelecionado && tipoSelecionado.input !== 'contador' && (
+      {etapaAtual === 'quantidade' && tipoSelecionado && tipoSelecionado.input !== 'contador' && tipoSelecionado.input !== 'contador_duplo' && (
         <TecladoNumerico
           label={labelQtdPrincipal}
           valor={quantidade}
