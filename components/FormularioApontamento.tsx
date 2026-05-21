@@ -155,7 +155,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         numero_op: op.toUpperCase(),
         quantidade_pecas: tipoSelecionado.unidade === 'pecas' ? parseInt(quantidade) : null,
         quantidade_ml: tipoSelecionado.unidade === 'ml'
-          ? parseInt(quantidade)
+          ? parseFloat(quantidade.replace(',', '.'))
           : (tipoSelecionado.segunda_quantidade
               ? parseInt(segundaQuantidade || '0')
               : null),
@@ -449,9 +449,10 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
           label={labelQtdPrincipal}
           valor={quantidade}
           onChange={setQuantidade}
-          placeholder={tipoSelecionado.unidade === 'ml' ? 'ex: 5' : 'ex: 10'}
-          maxLength={4}
-          max={9999}
+          placeholder={tipoSelecionado.decimal ? 'ex: 0,5' : tipoSelecionado.unidade === 'ml' ? 'ex: 5' : 'ex: 10'}
+          maxLength={tipoSelecionado.decimal ? 6 : 4}
+          max={tipoSelecionado.decimal ? undefined : 9999}
+          decimal={tipoSelecionado.decimal}
           autoFocus
           onEnter={() => { if (podeContinuar()) avancar() }}
         />

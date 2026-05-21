@@ -18,6 +18,8 @@ export interface TipoDesperdicio {
   segunda_quantidade?: { label: string }
   /** Forma de entrada da quantidade principal: teclado numérico (padrão) ou contador +1 */
   input?: OpcaoInput
+  /** Permite entrada decimal (vírgula) na quantidade principal */
+  decimal?: boolean
 }
 
 export interface GrupoDesperdicio {

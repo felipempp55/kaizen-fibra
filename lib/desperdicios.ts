@@ -18,6 +18,7 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
         unidade: 'ml',
         classificacao: 'nenhum',
         tempo: 'nunca',
+        decimal: true,
       },
     ],
   },
