@@ -126,7 +126,7 @@ function LogoArea() {
           color: 'rgba(255,255,255,0.45)',
         }}
       >
-        KAIZEN · FIBRA
+        ESTAÇÃO · FIBRA
       </span>
     </div>
   )
