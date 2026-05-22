@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import FormularioApontamento from '@/components/FormularioApontamento'
-import { salvarApontamento } from './actions'
+import { salvarApontamento, cancelarOP } from './actions'
 import type { NovoApontamento, TipoFibra } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
 import TecladoNumerico from '@/components/TecladoNumerico'
@@ -53,6 +53,7 @@ export default function Home() {
   const [authLogin, setAuthLogin] = useState('')
   const [authSenha, setAuthSenha] = useState('')
   const [authErro, setAuthErro] = useState(false)
+  const [processando, setProcessando] = useState(false)
 
   // Evita gravar no localStorage antes de ter carregado
   const persistindoAtivo = useRef(false)
@@ -97,13 +98,16 @@ export default function Home() {
     setAuthErro(false)
   }
 
-  function confirmarFechamentoOp() {
+  function verificarCredenciais(): boolean {
     if (authLogin.trim().toLowerCase() !== 'qualidade' || authSenha !== 'pareto') {
       setAuthErro(true)
       setAuthSenha('')
-      return
+      return false
     }
-    const numero = modalFecharOp!
+    return true
+  }
+
+  function removerOpLocal(numero: string) {
     const restantes = ops.filter(o => o.numero !== numero)
     setOps(restantes)
     if (opAtiva?.numero === numero) {
@@ -113,9 +117,33 @@ export default function Home() {
     setModalFecharOp(null)
   }
 
-  function cancelarFechamentoOp() {
+  // Finalizar: mantém dados no banco, só remove a OP da tela
+  function finalizarOP() {
+    if (!verificarCredenciais()) return
+    removerOpLocal(modalFecharOp!)
+  }
+
+  // Cancelar: apaga todos os apontamentos da OP no banco + remove da tela
+  async function handleCancelarOP() {
+    if (!verificarCredenciais()) return
+    const numero = modalFecharOp!
+    setProcessando(true)
+    try {
+      await cancelarOP(numero)
+      removerOpLocal(numero)
+    } catch {
+      setAuthErro(false)
+      // mantém modal aberto para o usuário tentar novamente
+    } finally {
+      setProcessando(false)
+    }
+  }
+
+  function fecharModal() {
     setModalFecharOp(null)
     setAuthErro(false)
+    setAuthSenha('')
+    setAuthLogin('')
   }
 
   function selecionarOp(op: OP) {
@@ -283,7 +311,7 @@ export default function Home() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-6">
             <div className="text-center">
               <div className="text-4xl mb-2">🔒</div>
-              <h2 className="text-lg font-bold text-[#1A3344]">Encerrar OP {modalFecharOp}</h2>
+              <h2 className="text-lg font-bold text-[#1A3344]">OP {modalFecharOp}</h2>
               <p className="text-[#8FA3B0] text-sm mt-1">Informe as credenciais de qualidade para continuar</p>
             </div>
 
@@ -294,7 +322,6 @@ export default function Home() {
                   type="text"
                   value={authLogin}
                   onChange={e => { setAuthLogin(e.target.value); setAuthErro(false) }}
-                  onKeyDown={e => { if (e.key === 'Enter') confirmarFechamentoOp() }}
                   placeholder="login"
                   autoFocus
                   className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none"
@@ -306,7 +333,6 @@ export default function Home() {
                   type="password"
                   value={authSenha}
                   onChange={e => { setAuthSenha(e.target.value); setAuthErro(false) }}
-                  onKeyDown={e => { if (e.key === 'Enter') confirmarFechamentoOp() }}
                   placeholder="••••••"
                   className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none"
                 />
@@ -316,18 +342,34 @@ export default function Home() {
               )}
             </div>
 
-            <div className="flex gap-3">
+            {/* Explicação das duas ações */}
+            <div className="bg-[#F2F5F7] rounded-xl p-3 flex flex-col gap-2 text-xs text-[#3D5568]">
+              <p><span className="font-bold text-[#1E9FAC]">Finalizar OP</span> — encerra a OP e mantém todos os dados registrados.</p>
+              <p><span className="font-bold text-red-500">Cancelar OP</span> — remove a OP e <span className="font-bold">apaga permanentemente</span> todos os apontamentos dela.</p>
+            </div>
+
+            {/* Botões de ação */}
+            <div className="flex flex-col gap-2">
               <button
-                onClick={cancelarFechamentoOp}
-                className="flex-1 bg-white border border-[#DDE4EA] hover:border-[#1E9FAC] text-[#3D5568] font-semibold py-3 rounded-xl transition-all active:scale-95"
+                onClick={finalizarOP}
+                disabled={processando}
+                className="w-full bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 disabled:opacity-40 text-white font-bold py-3.5 rounded-xl transition-all"
               >
-                Cancelar
+                ✓ Finalizar OP
               </button>
               <button
-                onClick={confirmarFechamentoOp}
-                className="flex-1 bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold py-3 rounded-xl transition-all"
+                onClick={handleCancelarOP}
+                disabled={processando}
+                className="w-full bg-red-500 hover:bg-red-600 active:scale-95 disabled:opacity-40 text-white font-bold py-3.5 rounded-xl transition-all"
               >
-                Encerrar OP
+                {processando ? 'Cancelando…' : '🗑️ Cancelar OP (apagar dados)'}
+              </button>
+              <button
+                onClick={fecharModal}
+                disabled={processando}
+                className="w-full bg-white border border-[#DDE4EA] hover:border-[#1E9FAC] text-[#3D5568] font-semibold py-3 rounded-xl transition-all active:scale-95"
+              >
+                Voltar
               </button>
             </div>
           </div>

@@ -53,6 +53,15 @@ export async function buscarRascunhosCEP(): Promise<RascunhoCEP[]> {
   return (data ?? []) as RascunhoCEP[]
 }
 
+// Cancela uma OP: apaga todos os apontamentos daquele número de OP
+export async function cancelarOP(numero_op: string) {
+  const { error } = await supabase
+    .from('apontamentos')
+    .delete()
+    .eq('numero_op', numero_op)
+  if (error) throw new Error(error.message)
+}
+
 // Exclui uma coleta (rascunho ou finalizada) pelo ID
 export async function excluirColetaCEP(id: string) {
   const { error } = await supabase
