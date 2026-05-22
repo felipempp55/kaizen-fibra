@@ -380,9 +380,6 @@ export default function DashboardPage() {
 
     // ── Métricas financeiras extras (depende de custoDiaMedio) ────────────
     const projecaoAnual  = Math.round(custoDiaMedio * 365)
-    const economiaKaizen = Math.round(
-      ricos.filter(a => a.classificacao === 'retrabalho').reduce((s, a) => s + a.custo, 0) * 0.55
-    )
 
     // ── Taxa de perda (% de apontamentos com custo > 0) ────────────────────
     const apontamentosComCusto = ricos.filter(a => a.custo > 0).length
@@ -396,7 +393,7 @@ export default function DashboardPage() {
       topOPs, ultimosReg, custoDiaMedio, projecaoMensal, taxaImpacto,
       porTurno, sparkApontamentos, sparkPecas, sparkCusto,
       taxaRefugo, conformidade, cpk, mapaDefeitos, tendenciaRefugo,
-      projecaoAnual, economiaKaizen,
+      projecaoAnual,
     }
   }, [dados])
 
@@ -851,9 +848,9 @@ export default function DashboardPage() {
         {aba === 'financeiro' && (
           <>
             {/* ── KPI Cards ────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <KPICard
-                label="Custo Total · Mês"
+                label="Custo Total · Período"
                 valor={fmtBRL(dp.custoTotal).num}
                 unidade={fmtBRL(dp.custoTotal).suf}
                 sparkData={dp.sparkCusto}
@@ -872,13 +869,6 @@ export default function DashboardPage() {
                 unidade={fmtBRL(dp.projecaoAnual).suf}
                 sparkData={dp.sparkCusto}
                 cor="var(--signal-red)"
-              />
-              <KPICard
-                label="Economia Kaizen"
-                valor={fmtBRL(dp.economiaKaizen).num}
-                unidade={fmtBRL(dp.economiaKaizen).suf}
-                sparkData={dp.sparkCusto.map(v => v * 0.12)}
-                cor="var(--signal-green)"
               />
             </div>
 
