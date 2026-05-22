@@ -78,10 +78,11 @@ interface Props {
   op: string
   fibra: TipoFibra
   operador: string
+  tamanho?: number
   onSalvar: (dados: NovoApontamento) => Promise<void>
 }
 
-export default function FormularioApontamento({ op, fibra, operador, onSalvar }: Props) {
+export default function FormularioApontamento({ op, fibra, operador, tamanho, onSalvar }: Props) {
   // ── Cronômetro ──────────────────────────────────────────────────────────────
   const [timer, setTimer] = useState<TimerState>(TIMER_INICIAL)
   const [agora, setAgora] = useState(Date.now())
@@ -165,6 +166,7 @@ export default function FormularioApontamento({ op, fibra, operador, onSalvar }:
           ?? (tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null),
         tempo_minutos: tempoMinutos ? parseInt(tempoMinutos) : null,
         observacao: null,
+        tamanho_op: tamanho ?? null,
       })
       setSucesso(true)
     } finally {

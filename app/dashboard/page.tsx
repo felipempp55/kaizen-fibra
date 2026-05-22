@@ -342,13 +342,21 @@ export default function DashboardPage() {
     const porMaterial = Array.from(mMat.values()).sort((a, b) => b.Custo - a.Custo)
 
     // ── Top OPs ────────────────────────────────────────────────────────────
-    type OPE = { numero: string; fibra: string; Apontamentos: number; Custo: number }
+    type OPE = { numero: string; fibra: string; Apontamentos: number; Custo: number; tamanho: number | null; perda: number; retrabalho: number }
     const mOP = new Map<string, OPE>()
     ricos.forEach(a => {
-      if (!mOP.has(a.numero_op)) mOP.set(a.numero_op, { numero: a.numero_op, fibra: a.fibra ?? '—', Apontamentos: 0, Custo: 0 })
-      const op = mOP.get(a.numero_op)!; op.Apontamentos++; op.Custo += a.custo
+      if (!mOP.has(a.numero_op)) mOP.set(a.numero_op, { numero: a.numero_op, fibra: a.fibra ?? '—', Apontamentos: 0, Custo: 0, tamanho: a.tamanho_op ?? null, perda: 0, retrabalho: 0 })
+      const op = mOP.get(a.numero_op)!
+      op.Apontamentos++; op.Custo += a.custo
+      if (!op.tamanho && a.tamanho_op) op.tamanho = a.tamanho_op
+      if (a.classificacao === 'perda') op.perda += a.quantidade_pecas ?? 0
+      else if (a.classificacao === 'retrabalho') op.retrabalho += a.quantidade_pecas ?? 0
     })
-    const topOPs = Array.from(mOP.values()).sort((a, b) => b.Custo - a.Custo).slice(0, 5)
+    const topOPs = Array.from(mOP.values()).map(op => ({
+      ...op,
+      taxaRefugo: (op.tamanho && op.tamanho > 0) ? Math.round((op.perda / op.tamanho) * 1000) / 10 : null,
+      taxaRetrabalho: (op.tamanho && op.tamanho > 0) ? Math.round((op.retrabalho / op.tamanho) * 1000) / 10 : null,
+    })).sort((a, b) => b.Custo - a.Custo).slice(0, 5)
 
     // ── Por turno (dia da semana) ──────────────────────────────────────────
     const mTurno = new Map<number, number>()
@@ -373,7 +381,13 @@ export default function DashboardPage() {
     const sparkCusto        = evDia.map(d => d.Custo)
 
     // ── Métricas de qualidade ──────────────────────────────────────────────
-    const taxaRefugo    = totalPecas > 0 ? (pecasPerdidas / totalPecas) * 100 : 0
+    // Tamanho real de cada OP única no período (1 valor por OP, não soma de apontamentos)
+    const opTamanhoMap = new Map<string, number>()
+    ricos.forEach(a => { if (a.tamanho_op && !opTamanhoMap.has(a.numero_op)) opTamanhoMap.set(a.numero_op, a.tamanho_op) })
+    const totalTamanhoOp = Array.from(opTamanhoMap.values()).reduce((s, v) => s + v, 0)
+
+    const taxaRefugo     = totalTamanhoOp > 0 ? (pecasPerdidas    / totalTamanhoOp) * 100 : 0
+    const taxaRetrabalho = totalTamanhoOp > 0 ? (pecasRetrabalho  / totalTamanhoOp) * 100 : 0
 
     // ── Mapa de defeitos — dados de hoje ──────────────────────────────────
     const hojeStr      = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
@@ -414,7 +428,7 @@ export default function DashboardPage() {
       porOperadora, porOperadoraCusto, fibraGrupo, porMaterial,
       topOPs, ultimosReg, custoDiaMedio, projecaoMensal, taxaImpacto,
       porTurno, sparkApontamentos, sparkPecas, sparkCusto,
-      taxaRefugo, mapaDefeitos, tendenciaRefugo,
+      taxaRefugo, taxaRetrabalho, totalTamanhoOp, mapaDefeitos, tendenciaRefugo,
       projecaoAnual,
     }
   }, [dados])
@@ -704,12 +718,14 @@ export default function DashboardPage() {
               {/* Radial — Meta da OP Ativa */}
               <Painel titulo="OP em Destaque">
                 {dp.topOPs.length === 0 ? <Vazio /> : (() => {
-                  const top    = dp.topOPs[0]
-                  const total  = dp.ricos.length || 1
-                  const pct    = Math.round((top.Apontamentos / total) * 100)
-                  const r      = 46
-                  const circ   = 2 * Math.PI * r
-                  const dash   = (pct / 100) * circ
+                  const top  = dp.topOPs[0]
+                  const pct  = top.taxaRefugo ?? Math.round((top.Apontamentos / (dp.ricos.length || 1)) * 100)
+                  const cor  = top.taxaRefugo !== null
+                    ? (pct > 10 ? 'var(--signal-red)' : pct > 5 ? 'var(--signal-amber)' : 'var(--signal-green)')
+                    : 'var(--brand-primary)'
+                  const r    = 46
+                  const circ = 2 * Math.PI * r
+                  const dash = (Math.min(pct, 100) / 100) * circ
                   return (
                     <div className="flex flex-col items-center gap-3 pt-2">
                       {/* Anel radial */}
@@ -718,7 +734,7 @@ export default function DashboardPage() {
                           <circle cx="58" cy="58" r={r} stroke="var(--line)" strokeWidth="10" fill="none" />
                           <circle
                             cx="58" cy="58" r={r}
-                            stroke="var(--brand-primary)" strokeWidth="10" fill="none"
+                            stroke={cor} strokeWidth="10" fill="none"
                             strokeDasharray={`${dash} ${circ}`}
                             strokeLinecap="round"
                             transform="rotate(-90 58 58)"
@@ -729,10 +745,10 @@ export default function DashboardPage() {
                             className="text-2xl font-extrabold leading-none"
                             style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}
                           >
-                            {pct}%
+                            {pct.toFixed(top.taxaRefugo !== null ? 1 : 0)}%
                           </span>
                           <span className="text-[9px] font-semibold mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                            do total
+                            {top.taxaRefugo !== null ? 'refugo' : 'apt.'}
                           </span>
                         </div>
                       </div>
@@ -746,7 +762,7 @@ export default function DashboardPage() {
                           OP {top.numero}
                         </p>
                         <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          {top.Apontamentos} apontamentos
+                          {top.tamanho ? `${top.tamanho.toLocaleString('pt-BR')} pç` : `${top.Apontamentos} apontamentos`}
                         </p>
                       </div>
 
@@ -754,11 +770,11 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-4 w-full justify-center">
                         <div className="text-center">
                           <p className="text-xs font-bold" style={{ color: 'var(--brand-primary)' }}>{top.Apontamentos}</p>
-                          <p className="text-[9px]" style={{ color: 'var(--text-faint)' }}>nesta OP</p>
+                          <p className="text-[9px]" style={{ color: 'var(--text-faint)' }}>apontamentos</p>
                         </div>
                         <div className="w-px h-6" style={{ background: 'var(--line)' }} />
                         <div className="text-center">
-                          <p className="text-xs font-bold" style={{ color: 'var(--text-body)' }}>{total - top.Apontamentos}</p>
+                          <p className="text-xs font-bold" style={{ color: 'var(--text-body)' }}>{dp.ricos.length - top.Apontamentos}</p>
                           <p className="text-[9px]" style={{ color: 'var(--text-faint)' }}>demais</p>
                         </div>
                         <div className="w-px h-6" style={{ background: 'var(--line)' }} />
@@ -781,13 +797,22 @@ export default function DashboardPage() {
         {aba === 'qualidade' && (
           <>
             {/* ── KPI Cards ────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               <KPICard
                 label="Taxa de Refugo"
                 valor={dp.taxaRefugo.toFixed(2)}
                 unidade="%"
                 sparkData={dp.sparkPecas}
                 cor="var(--signal-red)"
+                sub={dp.totalTamanhoOp > 0 ? `base: ${dp.totalTamanhoOp.toLocaleString('pt-BR')} pç` : 'sem tamanho de OP'}
+              />
+              <KPICard
+                label="Taxa de Retrabalho"
+                valor={dp.taxaRetrabalho.toFixed(2)}
+                unidade="%"
+                sparkData={dp.sparkPecas}
+                cor="var(--signal-amber)"
+                sub={dp.totalTamanhoOp > 0 ? `base: ${dp.totalTamanhoOp.toLocaleString('pt-BR')} pç` : 'sem tamanho de OP'}
               />
               <KPICard
                 label="Peças Perdidas"
@@ -1122,7 +1147,7 @@ export default function DashboardPage() {
                 {dp.topOPs.length === 0 ? <Vazio /> : (
                   <div className="flex flex-col gap-2 mt-1">
                     {dp.topOPs.map((op, i) => {
-                      const pct = dp.custoTotal > 0 ? (op.Custo / dp.custoTotal) * 100 : 0
+                      const pctCusto = dp.custoTotal > 0 ? (op.Custo / dp.custoTotal) * 100 : 0
                       return (
                         <div key={op.numero} className="flex flex-col gap-1">
                           <div className="flex items-center gap-3">
@@ -1134,14 +1159,20 @@ export default function DashboardPage() {
                                 <span className="text-[#1F3744] font-bold text-sm">{op.numero}</span>
                                 <span className="text-red-500 font-black text-sm tabular-nums">{R(op.Custo)}</span>
                               </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-[#607A89] text-[10px]">Fibra {op.fibra === 'F272' ? '272' : op.fibra === 'F365' ? '365' : op.fibra} · {op.Apontamentos} apt</span>
-                                <span className="text-[#607A89] text-[10px]">{pct.toFixed(1)}% do total</span>
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className="text-[#607A89] text-[10px]">
+                                  Fibra {op.fibra === 'F272' ? '272' : op.fibra === 'F365' ? '365' : op.fibra} · {op.Apontamentos} apt
+                                  {op.tamanho ? ` · ${op.tamanho.toLocaleString('pt-BR')} pç` : ''}
+                                </span>
+                                <span className="text-[10px] font-semibold tabular-nums" style={{ color: '#607A89' }}>
+                                  {op.taxaRefugo !== null ? `⬇ ${op.taxaRefugo.toFixed(1)}% refugo` : `${pctCusto.toFixed(1)}% custo`}
+                                  {op.taxaRetrabalho !== null && op.taxaRetrabalho > 0 ? ` · ↻ ${op.taxaRetrabalho.toFixed(1)}% ret.` : ''}
+                                </span>
                               </div>
                             </div>
                           </div>
                           <div className="h-1 rounded-full ml-8" style={{ background: 'var(--line)' }}>
-                            <div className="h-1 rounded-full bg-red-400 transition-all" style={{ width: `${pct}%` }} />
+                            <div className="h-1 rounded-full bg-red-400 transition-all" style={{ width: `${pctCusto}%` }} />
                           </div>
                         </div>
                       )
@@ -1200,13 +1231,14 @@ function SparklineSVG({ data, color = '#56A4BB' }: { data: number[]; color?: str
 // ─── KPI Card moderno (Produção) ──────────────────────────────────────────────
 
 function KPICard({
-  label, valor, unidade, sparkData, cor = 'var(--brand-primary)',
+  label, valor, unidade, sparkData, cor = 'var(--brand-primary)', sub,
 }: {
   label: string
   valor: string | number
   unidade?: string
   sparkData?: number[]
   cor?: string
+  sub?: string
 }) {
   return (
     <div
@@ -1241,6 +1273,9 @@ function KPICard({
           </span>
         )}
       </div>
+      {sub && (
+        <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{sub}</p>
+      )}
     </div>
   )
 }

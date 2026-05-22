@@ -637,6 +637,7 @@ export default function Home() {
                 op={opAtiva!.numero}
                 fibra={opAtiva!.fibra}
                 operador=""
+                tamanho={opAtiva!.tamanho}
                 onSalvar={handleSalvar}
               />
             </div>

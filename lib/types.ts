@@ -41,6 +41,7 @@ export interface Apontamento {
   classificacao: Classificacao | null
   tempo_minutos: number | null
   observacao: string | null
+  tamanho_op: number | null
 }
 
 export interface NovoApontamento {
@@ -54,6 +55,7 @@ export interface NovoApontamento {
   classificacao: Classificacao | null
   tempo_minutos: number | null
   observacao: string | null
+  tamanho_op: number | null
 }
 
 // ─── CEP ───────────────────────────────────────────────────────────────────
