@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaizen Fibra — Design Guide</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F2F5F7;
+      color: #1A3344;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ── */
+    .page { max-width: 900px; margin: 0 auto; padding: 48px 24px; display: flex; flex-direction: column; gap: 56px; }
+
+    /* ── Seção ── */
+    .section-title {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
+      text-transform: uppercase; color: #8FA3B0;
+      border-bottom: 1px solid #DDE4EA; padding-bottom: 10px; margin-bottom: 24px;
+    }
+
+    /* ── Capa ── */
+    .cover {
+      background: #1A3344; border-radius: 20px; padding: 48px;
+      display: flex; flex-direction: column; gap: 16px; color: white;
+    }
+    .cover-label { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #1E9FAC; }
+    .cover-title { font-size: 36px; font-weight: 800; }
+    .cover-sub { color: #8FA3B0; font-size: 15px; max-width: 480px; }
+    .cover-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .cover-chip {
+      background: rgba(30,159,172,0.15); color: #1E9FAC;
+      border: 1px solid rgba(30,159,172,0.3);
+      border-radius: 100px; padding: 4px 12px; font-size: 12px; font-weight: 600;
+    }
+
+    /* ── Cores ── */
+    .colors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+    .color-card { border-radius: 14px; overflow: hidden; border: 1px solid #DDE4EA; background: white; }
+    .color-swatch { height: 72px; }
+    .color-info { padding: 10px 12px; }
+    .color-name { font-size: 12px; font-weight: 700; color: #1A3344; }
+    .color-hex { font-size: 11px; color: #8FA3B0; font-family: monospace; }
+    .color-role { font-size: 10px; color: #8FA3B0; margin-top: 2px; }
+
+    /* ── Tipografia ── */
+    .type-stack { display: flex; flex-direction: column; gap: 20px; }
+    .type-row { display: flex; align-items: baseline; gap: 24px; padding: 16px; background: white; border: 1px solid #DDE4EA; border-radius: 12px; }
+    .type-meta { width: 120px; flex-shrink: 0; }
+    .type-label { font-size: 10px; font-weight: 700; color: #8FA3B0; text-transform: uppercase; letter-spacing: 0.08em; }
+    .type-spec { font-size: 10px; color: #8FA3B0; font-family: monospace; }
+
+    /* ── Componentes ── */
+    .comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .comp-card { background: white; border: 1px solid #DDE4EA; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .comp-label { font-size: 10px; font-weight: 700; color: #8FA3B0; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+
+    /* Botões */
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      border: none; cursor: pointer; font-weight: 700; border-radius: 12px;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .btn-primary { background: #1E9FAC; color: white; padding: 14px 28px; font-size: 15px; }
+    .btn-secondary { background: white; color: #3D5568; padding: 12px 20px; font-size: 14px; border: 1px solid #DDE4EA; }
+    .btn-danger { background: #ef4444; color: white; padding: 12px 20px; font-size: 14px; }
+    .btn-ghost { background: transparent; color: #1E9FAC; padding: 12px 16px; font-size: 13px; border: 1px solid rgba(30,159,172,0.4); }
+    .btn-icon { background: #DDE4EA; color: #3D5568; padding: 10px 14px; font-size: 13px; font-weight: 700; }
+    .btn-xl { background: #1E9FAC; color: white; padding: 20px; font-size: 20px; font-weight: 900; width: 100%; border-radius: 16px; }
+
+    /* Inputs */
+    .input-field {
+      border: 2px solid #DDE4EA; border-radius: 12px; padding: 14px 16px;
+      font-size: 15px; color: #1A3344; width: 100%; font-family: inherit;
+      outline: none;
+    }
+    .input-focused { border-color: #1E9FAC; }
+
+    /* Cards KPI */
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kpi-card {
+      background: white; border: 1px solid #DDE4EA;
+      border-left: 4px solid; border-radius: 12px; padding: 14px 16px;
+    }
+    .kpi-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #8FA3B0; }
+    .kpi-value { font-size: 26px; font-weight: 900; margin-top: 2px; }
+
+    /* Chips OP */
+    .op-bar { display: flex; align-items: center; gap: 6px; background: white; border: 1px solid #DDE4EA; border-radius: 12px; padding: 10px 14px; }
+    .op-chip { display: flex; align-items: center; gap: 6px; background: #1E9FAC; color: white; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; }
+    .op-chip-badge { background: rgba(255,255,255,0.2); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 700; }
+    .op-chip-inactive { background: #F2F5F7; color: #1A3344; border: 1px solid #DDE4EA; }
+    .op-chip-inactive .op-chip-badge { background: #DDE4EA; color: #3D5568; }
+    .op-add { color: #1E9FAC; border: 1px solid rgba(30,159,172,0.4); background: transparent; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+    /* Teclado numérico */
+    .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .key {
+      background: white; border: 1px solid #DDE4EA; border-radius: 10px;
+      padding: 16px; text-align: center; font-size: 20px; font-weight: 700;
+      color: #1A3344; cursor: pointer;
+    }
+    .key-del { background: #DDE4EA; color: #3D5568; }
+    .key-clear { background: #ef4444; color: white; border-color: transparent; }
+    .keypad-display {
+      background: white; border: 2px solid #DDE4EA; border-radius: 12px;
+      padding: 16px; text-align: center; font-size: 36px; font-weight: 900;
+      font-family: monospace; color: #1A3344; letter-spacing: 4px;
+      margin-bottom: 8px;
+    }
+
+    /* Modal */
+    .modal-preview {
+      background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      padding: 24px; display: flex; flex-direction: column; gap: 16px; max-width: 320px;
+    }
+    .modal-header { text-align: center; }
+    .modal-icon { font-size: 36px; margin-bottom: 8px; }
+    .modal-title { font-size: 17px; font-weight: 800; color: #1A3344; }
+    .modal-sub { font-size: 13px; color: #8FA3B0; margin-top: 4px; }
+
+    /* Seletor de fibra */
+    .fibra-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .fibra-btn {
+      border: 2px solid #DDE4EA; border-radius: 14px; padding: 20px;
+      text-align: center; font-weight: 800; font-size: 16px; cursor: pointer;
+      background: white; color: #1A3344;
+    }
+    .fibra-btn-active { background: #1E9FAC; border-color: #1E9FAC; color: white; }
+
+    /* Confirmação de apontamento */
+    .confirm-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F2F5F7; font-size: 14px; }
+    .confirm-row:last-child { border-bottom: none; }
+    .confirm-label { color: #8FA3B0; font-weight: 500; }
+    .confirm-value { color: #1A3344; font-weight: 700; }
+
+    /* Card materiais */
+    .materiais-card { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; padding: 14px; }
+    .materiais-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #B91C1C; letter-spacing: 0.1em; margin-bottom: 10px; }
+    .material-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    .material-name { color: #1A3344; font-weight: 500; }
+    .material-price { color: #DC2626; font-weight: 700; font-family: monospace; }
+    .material-total { display: flex; justify-content: space-between; border-top: 1px solid #FECACA; padding-top: 10px; margin-top: 8px; }
+    .material-total-label { font-size: 13px; font-weight: 800; color: #B91C1C; }
+    .material-total-value { font-size: 17px; font-weight: 900; color: #B91C1C; font-family: monospace; }
+
+    /* Cronômetro */
+    .timer-card { border: 2px solid #1E9FAC; background: #E6F6F8; border-radius: 14px; padding: 16px; }
+    .timer-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .timer-dot { width: 8px; height: 8px; border-radius: 50%; background: #1E9FAC; }
+    .timer-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #1A3344; }
+    .timer-display { font-size: 52px; font-weight: 900; font-family: monospace; color: #1E9FAC; text-align: center; padding: 8px 0; }
+    .timer-btns { display: flex; gap: 8px; }
+    .timer-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; }
+    .timer-pause { background: #f59e0b; color: white; }
+    .timer-stop { background: #ef4444; color: white; }
+
+    /* Navegação */
+    .nav-bar { background: #1A3344; border-radius: 14px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .nav-logo { color: white; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .nav-logo-dot { width: 8px; height: 8px; border-radius: 50%; background: #1E9FAC; }
+    .nav-links { display: flex; gap: 6px; }
+    .nav-link { color: #8FA3B0; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; text-decoration: none; }
+    .nav-link-active { color: white; background: rgba(255,255,255,0.08); }
+
+    /* Tabs dashboard */
+    .tabs { display: flex; background: white; border: 1px solid #DDE4EA; border-radius: 12px; overflow: hidden; }
+    .tab { flex: 1; padding: 14px; text-align: center; font-size: 13px; font-weight: 700; color: #8FA3B0; cursor: pointer; }
+    .tab-active { color: #1E9FAC; border-bottom: 2px solid #1E9FAC; background: #F2F5F7; }
+
+    /* Etapa indicador */
+    .etapa-bar { display: flex; align-items: center; gap: 0; }
+    .etapa-step {
+      width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800;
+    }
+    .etapa-done { background: #1E9FAC; color: white; }
+    .etapa-current { background: #1A3344; color: white; }
+    .etapa-pending { background: #DDE4EA; color: #8FA3B0; }
+    .etapa-line { flex: 1; height: 2px; background: #DDE4EA; }
+    .etapa-line-done { background: #1E9FAC; }
+
+    /* Sucesso */
+    .success-card { background: white; border: 1px solid #DDE4EA; border-radius: 20px; padding: 40px 24px; text-align: center; }
+    .success-icon { font-size: 72px; margin-bottom: 16px; }
+    .success-title { font-size: 28px; font-weight: 900; color: #1E9FAC; }
+    .success-sub { color: #8FA3B0; font-size: 15px; margin-top: 6px; }
+
+    /* Sombras e tokens */
+    .tokens-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .token-row { display: flex; justify-content: space-between; align-items: center; background: white; border: 1px solid #DDE4EA; border-radius: 10px; padding: 12px 16px; }
+    .token-name { font-size: 12px; font-weight: 700; color: #1A3344; }
+    .token-value { font-size: 11px; color: #8FA3B0; font-family: monospace; }
+
+    /* Alert / Erro */
+    .alert-error { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #DC2626; }
+    .alert-success { background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #065F46; }
+    .alert-info { background: #E6F6F8; border: 1px solid #99E6EE; border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #0E7490; }
+
+    /* BotaoGrande */
+    .botao-grande { border: 2px solid #DDE4EA; background: white; border-radius: 16px; padding: 20px 16px; font-size: 15px; font-weight: 700; color: #1A3344; width: 100%; cursor: pointer; text-align: center; }
+    .botao-grande-active { border-color: #1E9FAC; background: #E6F6F8; color: #1E9FAC; }
+
+    /* Login */
+    .login-card { background: white; border: 1px solid #DDE4EA; border-radius: 20px; padding: 40px 32px; display: flex; flex-direction: column; gap: 20px; max-width: 360px; }
+    .login-header { text-align: center; }
+    .login-icon { font-size: 48px; margin-bottom: 12px; }
+    .login-title { font-size: 20px; font-weight: 800; color: #1A3344; }
+    .login-sub { font-size: 13px; color: #8FA3B0; margin-top: 4px; }
+    .input-label { font-size: 13px; font-weight: 700; color: #1A3344; margin-bottom: 6px; display: block; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══ CAPA ══════════════════════════════════════════════════════ -->
+  <div class="cover">
+    <div class="cover-label">Design Guide · v1.0</div>
+    <div class="cover-title">Kaizen Fibra — MSB</div>
+    <div class="cover-sub">Sistema de apontamento de desperdícios de fibra óptica. Interface tablet-first, otimizada para uso com toque, sem dependência de mouse.</div>
+    <div class="cover-chips">
+      <span class="cover-chip">Next.js 16</span>
+      <span class="cover-chip">Tailwind CSS 4</span>
+      <span class="cover-chip">Tablet First</span>
+      <span class="cover-chip">Touch Optimized</span>
+      <span class="cover-chip">Dark Nav · Light Content</span>
+    </div>
+  </div>
+
+  <!-- ══ PALETA DE CORES ════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Paleta de Cores</div>
+    <div class="colors-grid">
+      <div class="color-card">
+        <div class="color-swatch" style="background:#1E9FAC"></div>
+        <div class="color-info">
+          <div class="color-name">Primary</div>
+          <div class="color-hex">#1E9FAC</div>
+          <div class="color-role">Ações principais, links ativos, destaques</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#157A86"></div>
+        <div class="color-info">
+          <div class="color-name">Primary Dark</div>
+          <div class="color-hex">#157A86</div>
+          <div class="color-role">Hover do botão primário</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#E6F6F8"></div>
+        <div class="color-info">
+          <div class="color-name">Primary Light</div>
+          <div class="color-hex">#E6F6F8</div>
+          <div class="color-role">Background hover, selecionados</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#1A3344"></div>
+        <div class="color-info">
+          <div class="color-name">Dark Navy</div>
+          <div class="color-hex">#1A3344</div>
+          <div class="color-role">Texto principal, navbar background</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#3D5568"></div>
+        <div class="color-info">
+          <div class="color-name">Navy Mid</div>
+          <div class="color-hex">#3D5568</div>
+          <div class="color-role">Texto secundário de ação</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#8FA3B0"></div>
+        <div class="color-info">
+          <div class="color-name">Muted</div>
+          <div class="color-hex">#8FA3B0</div>
+          <div class="color-role">Labels, placeholders, textos auxiliares</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#DDE4EA"></div>
+        <div class="color-info">
+          <div class="color-name">Border</div>
+          <div class="color-hex">#DDE4EA</div>
+          <div class="color-role">Bordas de cards e inputs</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#F2F5F7"></div>
+        <div class="color-info">
+          <div class="color-name">Background</div>
+          <div class="color-hex">#F2F5F7</div>
+          <div class="color-role">Background geral da página</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#ef4444"></div>
+        <div class="color-info">
+          <div class="color-name">Danger</div>
+          <div class="color-hex">#ef4444</div>
+          <div class="color-role">Perdas, cancelamentos, alertas</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#eab308"></div>
+        <div class="color-info">
+          <div class="color-name">Warning</div>
+          <div class="color-hex">#eab308</div>
+          <div class="color-role">Retrabalhos, timer pausado</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#10b981"></div>
+        <div class="color-info">
+          <div class="color-name">Success</div>
+          <div class="color-hex">#10b981</div>
+          <div class="color-role">Dashboard financeiro</div>
+        </div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#8b5cf6"></div>
+        <div class="color-info">
+          <div class="color-name">Purple</div>
+          <div class="color-hex">#8b5cf6</div>
+          <div class="color-role">Gráficos — Epóxi, acumulado</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TIPOGRAFIA ═════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Tipografia — System Font Stack</div>
+    <div class="type-stack">
+      <div class="type-row">
+        <div class="type-meta"><div class="type-label">Display</div><div class="type-spec">900 · 72px</div></div>
+        <span style="font-size:56px;font-weight:900;color:#1A3344;font-family:monospace">00:00</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><div class="type-label">Heading XL</div><div class="type-spec">900 · 36px</div></div>
+        <span style="font-size:36px;font-weight:900;color:#1A3344">Apontamento Salvo!</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><div class="type-label">Heading L</div><div class="type-spec">800 · 24px</div></div>
+        <span style="font-size:24px;font-weight:800;color:#1A3344">Confirmar apontamento</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><div class="type-label">Heading M</div><div class="type-spec">700 · 20px</div></div>
+        <span style="font-size:20px;font-weight:700;color:#1A3344">Abrir Ordem de Produção</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><div class="type-label">Body</div><div class="type-spec">500 · 15px</div></div>
+        <span style="font-size:15px;font-weight:500;color:#1A3344">Selecione o grupo de desperdício para continuar</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><div class="type-label">Body Small</div><div class="type-spec">500 · 13px</div></div>
+        <span style="font-size:13px;font-weight:500;color:#8FA3B0">Janete · 14:32 · OP 000123456</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><div class="type-label">Label / Badge</div><div class="type-spec">700–800 · 10–11px</div></div>
+        <span style="font-size:10px;font-weight:800;color:#8FA3B0;text-transform:uppercase;letter-spacing:0.12em">TIPO DE DESPERDÍCIO</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><div class="type-label">Keypad / Mono</div><div class="type-spec">900 · 56px · monospace</div></div>
+        <span style="font-size:48px;font-weight:900;color:#1A3344;font-family:monospace;letter-spacing:4px">247</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ NAVEGAÇÃO ══════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Navegação Principal</div>
+    <div class="nav-bar">
+      <div class="nav-logo">
+        <div class="nav-logo-dot"></div>
+        Kaizen Fibra
+      </div>
+      <div class="nav-links">
+        <a class="nav-link nav-link-active" href="#">Apontamentos</a>
+        <a class="nav-link" href="#">Dashboard</a>
+        <a class="nav-link" href="#">CEP</a>
+        <a class="nav-link" href="#">Cartas</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ BARRA DE OPS ═══════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Barra de Ordens de Produção</div>
+    <div class="op-bar">
+      <span style="font-size:10px;font-weight:700;color:#8FA3B0;text-transform:uppercase;letter-spacing:0.1em">OP:</span>
+      <div class="op-chip">
+        000123456
+        <span class="op-chip-badge">272</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:2px;">
+        <div class="op-chip op-chip-inactive">
+          000456789
+          <span class="op-chip-badge">365</span>
+        </div>
+        <span style="color:#C4D0DA;font-size:12px;padding:4px 6px;cursor:pointer">✕</span>
+      </div>
+      <div class="op-add">+ Nova OP</div>
+    </div>
+  </div>
+
+  <!-- ══ BOTÕES ══════════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Botões</div>
+    <div class="comp-grid">
+      <div class="comp-card">
+        <div class="comp-label">Primário / CTA</div>
+        <div class="btn-row">
+          <button class="btn btn-primary">Iniciar Apontamentos →</button>
+        </div>
+        <button class="btn btn-xl">+1</button>
+      </div>
+      <div class="comp-card">
+        <div class="comp-label">Secundário / Ações</div>
+        <div class="btn-row">
+          <button class="btn btn-secondary">← Voltar</button>
+          <button class="btn btn-danger">🗑️ Cancelar OP</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost">+ Nova OP</button>
+          <button class="btn btn-icon">⌫</button>
+          <button class="btn btn-icon" style="background:#ef4444;color:white">C</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ BOTÃO GRANDE (seleção) ══════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Botão de Seleção Grande</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:400px">
+      <button class="botao-grande">Epóxi</button>
+      <button class="botao-grande botao-grande-active">Polimento</button>
+      <button class="botao-grande">Problemas Dimensionais</button>
+      <button class="botao-grande">Clivagem</button>
+    </div>
+  </div>
+
+  <!-- ══ SELETOR DE FIBRA ════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Seletor de Tipo de Fibra</div>
+    <div class="fibra-grid" style="max-width:360px">
+      <button class="fibra-btn fibra-btn-active">Fibra 272</button>
+      <button class="fibra-btn">Fibra 365</button>
+    </div>
+  </div>
+
+  <!-- ══ INPUTS ══════════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Inputs de Texto</div>
+    <div class="comp-grid">
+      <div class="comp-card">
+        <div class="comp-label">Estado Normal</div>
+        <input class="input-field" placeholder="login" />
+      </div>
+      <div class="comp-card">
+        <div class="comp-label">Estado Focado</div>
+        <input class="input-field input-focused" value="qualidade" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TECLADO NUMÉRICO ════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Teclado Numérico (Tablet Input)</div>
+    <div style="max-width:280px">
+      <div class="keypad-display">247</div>
+      <div class="keypad">
+        <div class="key">1</div><div class="key">2</div><div class="key">3</div>
+        <div class="key">4</div><div class="key">5</div><div class="key">6</div>
+        <div class="key">7</div><div class="key">8</div><div class="key">9</div>
+        <div class="key key-clear">C</div><div class="key">0</div><div class="key key-del">⌫</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ INDICADOR DE ETAPAS ════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Indicador de Etapas (Progress)</div>
+    <div style="background:white;border:1px solid #DDE4EA;border-radius:14px;padding:20px">
+      <div class="etapa-bar">
+        <div class="etapa-step etapa-done">✓</div>
+        <div class="etapa-line etapa-line-done"></div>
+        <div class="etapa-step etapa-done">✓</div>
+        <div class="etapa-line etapa-line-done"></div>
+        <div class="etapa-step etapa-current">3</div>
+        <div class="etapa-line"></div>
+        <div class="etapa-step etapa-pending">4</div>
+        <div class="etapa-line"></div>
+        <div class="etapa-step etapa-pending">5</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <span style="font-size:9px;color:#8FA3B0">Grupo</span>
+        <span style="font-size:9px;color:#8FA3B0">Tipo</span>
+        <span style="font-size:9px;color:#1A3344;font-weight:700">Operadora</span>
+        <span style="font-size:9px;color:#8FA3B0">Qtd</span>
+        <span style="font-size:9px;color:#8FA3B0">Confirmar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ KPI CARDS ══════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Cards de KPI (Dashboard)</div>
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-left-color:#1E9FAC">
+        <div class="kpi-label">📋 Apontamentos</div>
+        <div class="kpi-value" style="color:#1E9FAC">247</div>
+      </div>
+      <div class="kpi-card" style="border-left-color:#ef4444">
+        <div class="kpi-label">💸 Custo Total</div>
+        <div class="kpi-value" style="color:#ef4444;font-size:20px">R$ 3.842</div>
+      </div>
+      <div class="kpi-card" style="border-left-color:#8b5cf6">
+        <div class="kpi-label">📈 Projeção Mensal</div>
+        <div class="kpi-value" style="color:#8b5cf6;font-size:20px">R$ 12.400</div>
+      </div>
+      <div class="kpi-card" style="border-left-color:#f97316">
+        <div class="kpi-label">⏱️ Tempo Retrabalho</div>
+        <div class="kpi-value" style="color:#f97316">183 min</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TABS DO DASHBOARD ══════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Tabs de Navegação (Dashboard)</div>
+    <div class="tabs">
+      <div class="tab tab-active">🏭 Produção</div>
+      <div class="tab">📊 Qualidade</div>
+      <div class="tab">💰 Financeiro</div>
+    </div>
+  </div>
+
+  <!-- ══ CRONÔMETRO ══════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Cronômetro de Retrabalho</div>
+    <div style="max-width:360px">
+      <div class="timer-card">
+        <div class="timer-header">
+          <div class="timer-dot"></div>
+          <div class="timer-label">Retrabalho Manual Pós Máquina</div>
+        </div>
+        <div class="timer-display">01:24:37</div>
+        <div class="timer-btns">
+          <button class="timer-btn timer-pause">⏸ Pausar</button>
+          <button class="timer-btn timer-stop">✓ Concluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TELA DE CONFIRMAÇÃO ════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Tela de Confirmação de Apontamento</div>
+    <div style="max-width:400px;display:flex;flex-direction:column;gap:12px">
+      <div style="background:white;border:1px solid #DDE4EA;border-radius:14px;padding:20px">
+        <div class="confirm-row"><span class="confirm-label">OP</span><span class="confirm-value">000123456 · Fibra 272</span></div>
+        <div class="confirm-row"><span class="confirm-label">Operadora</span><span class="confirm-value">Janete</span></div>
+        <div class="confirm-row"><span class="confirm-label">Grupo</span><span class="confirm-value">Polimento</span></div>
+        <div class="confirm-row"><span class="confirm-label">Tipo</span><span class="confirm-value">Máquina</span></div>
+        <div class="confirm-row"><span class="confirm-label">Peças enviadas ao retrabalho</span><span class="confirm-value">12</span></div>
+        <div class="confirm-row"><span class="confirm-label">Peças perdidas no retrabalho</span><span class="confirm-value">3</span></div>
+      </div>
+      <div class="materiais-card">
+        <div class="materiais-title">📦 Materiais consumidos neste apontamento</div>
+        <div class="material-row"><span class="material-name">Conector SMA Parte A <span style="color:#8FA3B0">× 3</span></span><span class="material-price">R$ 96,72</span></div>
+        <div class="material-row"><span class="material-name">Conector SMA Parte B 272 <span style="color:#8FA3B0">× 3</span></span><span class="material-price">R$ 22,05</span></div>
+        <div class="material-row"><span class="material-name">Ferrule 272 <span style="color:#8FA3B0">× 3</span></span><span class="material-price">R$ 58,83</span></div>
+        <div class="material-total"><span class="material-total-label">Total estimado</span><span class="material-total-value">R$ 177,60</span></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:20px;font-size:18px;border-radius:14px">✓ Salvar</button>
+    </div>
+  </div>
+
+  <!-- ══ MODAL ══════════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Modal de Autenticação</div>
+    <div class="modal-preview">
+      <div class="modal-header">
+        <div class="modal-icon">🔒</div>
+        <div class="modal-title">OP 000123456</div>
+        <div class="modal-sub">Informe as credenciais de qualidade para continuar</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div><label class="input-label">Login</label><input class="input-field" placeholder="login" /></div>
+        <div><label class="input-label">Senha</label><input class="input-field" type="password" placeholder="••••••" /></div>
+      </div>
+      <div style="background:#F2F5F7;border-radius:10px;padding:12px;font-size:12px;color:#3D5568;display:flex;flex-direction:column;gap:6px">
+        <div><strong style="color:#1E9FAC">Finalizar OP</strong> — encerra e mantém os dados.</div>
+        <div><strong style="color:#ef4444">Cancelar OP</strong> — apaga todos os apontamentos.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-primary" style="width:100%;padding:14px">✓ Finalizar OP</button>
+        <button class="btn btn-danger" style="width:100%;padding:14px">🗑️ Cancelar OP (apagar dados)</button>
+        <button class="btn btn-secondary" style="width:100%;padding:14px">Voltar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TELA DE SUCESSO ════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Tela de Sucesso</div>
+    <div class="success-card" style="max-width:400px">
+      <div class="success-icon">✅</div>
+      <div class="success-title">Apontamento Salvo!</div>
+      <div class="success-sub">Máquina · Janete · OP 000123456</div>
+      <button class="btn btn-primary" style="margin-top:24px;padding:16px 32px;font-size:16px">Novo Apontamento</button>
+    </div>
+  </div>
+
+  <!-- ══ LOGIN ══════════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Tela de Login (Dashboard)</div>
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-icon">📊</div>
+        <div class="login-title">Acesso ao Dashboard</div>
+        <div class="login-sub">Área restrita — informe suas credenciais</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div><label class="input-label">Login</label><input class="input-field" placeholder="login" /></div>
+        <div><label class="input-label">Senha</label><input class="input-field" type="password" placeholder="••••••" /></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:16px;font-size:16px">Entrar →</button>
+    </div>
+  </div>
+
+  <!-- ══ ALERTAS ════════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Alertas e Feedbacks</div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:480px">
+      <div class="alert-error">⚠️ Erro ao salvar. Verifique sua conexão e tente novamente.</div>
+      <div class="alert-info">ℹ️ Selecione a operadora para continuar o apontamento.</div>
+      <div class="alert-success">✓ Apontamento registrado com sucesso no banco de dados.</div>
+    </div>
+  </div>
+
+  <!-- ══ TOKENS DE DESIGN ════════════════════════════════════════════ -->
+  <div>
+    <div class="section-title">Tokens de Design</div>
+    <div class="tokens-grid">
+      <div class="token-row"><span class="token-name">Border Radius — Card</span><span class="token-value">16–20px</span></div>
+      <div class="token-row"><span class="token-name">Border Radius — Botão</span><span class="token-value">12–16px</span></div>
+      <div class="token-row"><span class="token-name">Border Radius — Input</span><span class="token-value">12px</span></div>
+      <div class="token-row"><span class="token-name">Border Radius — Badge</span><span class="token-value">4–6px</span></div>
+      <div class="token-row"><span class="token-name">Border — Cards</span><span class="token-value">1px solid #DDE4EA</span></div>
+      <div class="token-row"><span class="token-name">Border — Input focus</span><span class="token-value">2px solid #1E9FAC</span></div>
+      <div class="token-row"><span class="token-name">Shadow — Cards</span><span class="token-value">0 1px 4px rgba(0,0,0,.06)</span></div>
+      <div class="token-row"><span class="token-name">Shadow — Modal</span><span class="token-value">0 20px 60px rgba(0,0,0,.15)</span></div>
+      <div class="token-row"><span class="token-name">Transition</span><span class="token-value">all 150ms ease</span></div>
+      <div class="token-row"><span class="token-name">Tap feedback</span><span class="token-value">scale(0.95–0.98)</span></div>
+      <div class="token-row"><span class="token-name">Tap target mínimo</span><span class="token-value">48px height</span></div>
+      <div class="token-row"><span class="token-name">Gap padrão</span><span class="token-value">12–16px</span></div>
+    </div>
+  </div>
+
+  <!-- ══ NOTAS PARA O DESIGNER ══════════════════════════════════════ -->
+  <div style="background:#1A3344;border-radius:20px;padding:40px;color:white">
+    <div style="font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#1E9FAC;margin-bottom:16px">Contexto e Intenção de Melhoria</div>
+    <div style="display:flex;flex-direction:column;gap:20px;font-size:14px;color:#8FA3B0;line-height:1.7">
+      <div>
+        <div style="color:white;font-weight:700;margin-bottom:4px">Contexto de uso</div>
+        Operadoras de linha de produção de cabos de fibra óptica. Uso em tablet de 10", de pé, próximo à bancada. Sem mouse. Toque frequente com luvas finas. Não há tempo para leitura demorada.
+      </div>
+      <div>
+        <div style="color:white;font-weight:700;margin-bottom:4px">O que queremos melhorar</div>
+        A estética geral está funcional mas genérica. Queremos uma identidade visual mais marcante e profissional — que remeta a precisão industrial, qualidade e tecnologia — sem perder a clareza e acessibilidade tátil.
+      </div>
+      <div>
+        <div style="color:white;font-weight:700;margin-bottom:4px">Restrições obrigatórias</div>
+        Botões mínimos de 48px de altura. Alto contraste (leitura em ambiente industrial com reflexo). Paleta de no máximo 3-4 cores principais. Sem animações pesadas (tablet pode ser entry-level). Fontes system-font apenas.
+      </div>
+      <div>
+        <div style="color:white;font-weight:700;margin-bottom:4px">Referências de estilo desejadas</div>
+        Industrial moderno. Precisão técnica. Palheta fria (azuis, teals, cinzas). Possível: dark mode para a navbar mantida, light mode no conteúdo. Inspirações: dashboards industriais, interfaces de CNC, apps de qualidade ISO.
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
