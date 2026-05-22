@@ -99,7 +99,12 @@ export default function Home() {
   }
 
   function verificarCredenciais(): boolean {
-    if (authLogin.trim().toLowerCase() !== 'qualidade' || authSenha !== 'pareto') {
+    const login = authLogin.trim().toLowerCase()
+    const senha = authSenha
+    const valido =
+      (login === 'qualidade' && senha === 'pareto') ||
+      (login === 'janete'    && senha === 'fibra')
+    if (!valido) {
       setAuthErro(true)
       setAuthSenha('')
       return false

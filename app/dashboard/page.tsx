@@ -72,9 +72,78 @@ const fmtDia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day:
 const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 const R = (v: number) => formatarReal(v)
 
+// ─── Tela de login ────────────────────────────────────────────────────────────
+
+function LoginDashboard({ onSuccess }: { onSuccess: () => void }) {
+  const [login, setLogin] = useState('')
+  const [senha, setSenha] = useState('')
+  const [erro, setErro] = useState(false)
+
+  function tentar() {
+    if (login.trim().toLowerCase() === 'qualidade' && senha === 'pareto') {
+      onSuccess()
+    } else {
+      setErro(true)
+      setSenha('')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F2F5F7] flex flex-col">
+      <Navegacao />
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="bg-white border border-[#DDE4EA] rounded-2xl shadow-sm w-full max-w-sm flex flex-col gap-6 p-8">
+          <div className="text-center">
+            <div className="text-5xl mb-3">📊</div>
+            <h2 className="text-xl font-bold text-[#1A3344]">Acesso ao Dashboard</h2>
+            <p className="text-[#8FA3B0] text-sm mt-1">Área restrita — informe suas credenciais</p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[#1A3344] text-sm font-semibold">Login</label>
+              <input
+                type="text"
+                value={login}
+                onChange={e => { setLogin(e.target.value); setErro(false) }}
+                onKeyDown={e => { if (e.key === 'Enter') tentar() }}
+                placeholder="login"
+                autoFocus
+                className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none transition-colors"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[#1A3344] text-sm font-semibold">Senha</label>
+              <input
+                type="password"
+                value={senha}
+                onChange={e => { setSenha(e.target.value); setErro(false) }}
+                onKeyDown={e => { if (e.key === 'Enter') tentar() }}
+                placeholder="••••••"
+                className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none transition-colors"
+              />
+            </div>
+            {erro && (
+              <p className="text-red-500 text-sm text-center font-medium">Login ou senha incorretos</p>
+            )}
+          </div>
+
+          <button
+            onClick={tentar}
+            className="bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 text-white font-bold text-lg py-4 rounded-xl transition-all"
+          >
+            Entrar →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const [autenticado, setAutenticado] = useState(false)
   const [periodo, setPeriodo] = useState<Periodo>('semana')
   const [ini, setIni] = useState('')
   const [fim, setFim] = useState('')
@@ -225,6 +294,9 @@ export default function DashboardPage() {
       topOPs, ultimosReg, custoDiaMedio, projecaoMensal, taxaImpacto,
     }
   }, [dados])
+
+  // ── Guard de autenticação ──────────────────────────────────────────────────
+  if (!autenticado) return <LoginDashboard onSuccess={() => setAutenticado(true)} />
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
