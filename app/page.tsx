@@ -7,7 +7,6 @@ import type { NovoApontamento, TipoFibra, Apontamento } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
 import TecladoNumerico from '@/components/TecladoNumerico'
 import { supabase } from '@/lib/supabase'
-import { calcularPerdaMateriais, calcularCustoTotal } from '@/lib/materiais'
 
 const STORAGE_KEY = 'kaizen-ops-abertas'
 
@@ -196,10 +195,6 @@ export default function Home() {
   // Métricas derivadas
   const metricas = useMemo(() => {
     const total = dadosHoje.length
-    const custoTotal = dadosHoje.reduce((acc, a) => {
-      const itens = calcularPerdaMateriais(a.tipo_desperdicio, a.fibra ?? 'F272', a.quantidade_pecas, a.quantidade_ml)
-      return acc + calcularCustoTotal(itens)
-    }, 0)
     const tempoTotal = dadosHoje.reduce((acc, a) => acc + (a.tempo_minutos ?? 0), 0)
     const porGrupo = dadosHoje.reduce((acc, a) => { acc[a.grupo] = (acc[a.grupo] ?? 0) + 1; return acc }, {} as Record<string, number>)
     const porHora = Array(14).fill(0)
@@ -208,7 +203,7 @@ export default function Home() {
       if (h >= 7 && h <= 20) porHora[h - 7]++
     })
     const ultimosApontamentos = [...dadosHoje].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 6)
-    return { total, custoTotal, tempoTotal, porGrupo, porHora, ultimosApontamentos }
+    return { total, tempoTotal, porGrupo, porHora, ultimosApontamentos }
   }, [dadosHoje])
 
   function podeSalvarOp() { return novoNumeroOP.trim().length > 0 && novaFibra !== null }
@@ -407,9 +402,6 @@ export default function Home() {
                 {/* Sub métricas */}
                 <div className="flex gap-7 mt-4">
                   <MetricaMini label="Apontamentos" valor={String(metricas.total)} />
-                  <MetricaMini label="Custo Estimado"
-                    valor={`R$ ${metricas.custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    cor="var(--signal-amber)" />
                   <MetricaMini label="Tempo Retrabalho"
                     valor={metricas.tempoTotal > 0 ? `${metricas.tempoTotal} min` : '—'} />
                 </div>
@@ -491,17 +483,12 @@ export default function Home() {
         </div>
 
         {/* ── Linha 2: KPI cards ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <KPICard label="Apontamentos · Hoje" valor={String(metricas.total)}
             spark={<Sparkline data={metricas.porHora} color="var(--brand-primary)" />}
             cor="var(--brand-primary)" />
-          <KPICard label="Custo Total · Hoje"
-            valor={metricas.custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-            unidade="BRL"
-            spark={<Sparkline data={metricas.porHora.map(v => v * 18)} color="var(--signal-amber)" />}
-            cor="var(--signal-amber)" />
           <KPICard label="Tempo Retrabalho" valor={String(metricas.tempoTotal)} unidade="min"
-            spark={<Sparkline data={metricas.porHora.map((_, i) => i % 3 === 0 ? 8 : 3)} color="var(--brand-safira, #5F88A1)" />}
+            spark={<Sparkline data={metricas.porHora.map((_, i) => i % 3 === 0 ? 8 : 3)} color="var(--brand-deep-2)" />}
             cor="var(--brand-deep-2)" />
           <KPICard label="Grupos com Ocorrência" valor={String(Object.keys(metricas.porGrupo).length)} unidade="grupos"
             spark={<Sparkline data={[1, 2, 2, 3, 3, 3, Object.keys(metricas.porGrupo).length]} color="var(--signal-green)" />}
