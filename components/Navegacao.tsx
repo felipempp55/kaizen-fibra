@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
@@ -31,20 +32,18 @@ export default function Navegacao({ onReset }: Props) {
       style={{ background: 'var(--brand-deep)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
     >
       {/* ─── Esquerda: logo ─────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 shrink-0">
         {onReset ? (
           <button
             onClick={onReset}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             title="Voltar ao início"
           >
-            <LogoMark />
-            <LogoWordmark />
+            <LogoArea />
           </button>
         ) : (
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <LogoMark />
-            <LogoWordmark />
+            <LogoArea />
           </Link>
         )}
       </div>
@@ -101,38 +100,30 @@ export default function Navegacao({ onReset }: Props) {
   )
 }
 
-function LogoMark() {
+function LogoArea() {
   return (
-    <div
-      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-      style={{ background: 'var(--brand-primary)' }}
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="1.6" />
-        <circle cx="12" cy="12" r="5.5" stroke="white" strokeWidth="1.6" />
-        <circle cx="12" cy="12" r="1.6" fill="white" />
-      </svg>
-    </div>
-  )
-}
+    <div className="flex items-center gap-3">
+      {/* Logo MSB — versão branca para fundo escuro */}
+      <Image
+        src="/Logo MSB-12.png"
+        alt="MSB"
+        width={72}
+        height={32}
+        style={{ objectFit: 'contain', objectPosition: 'left center' }}
+        priority
+      />
 
-function LogoWordmark() {
-  return (
-    <div className="flex flex-col leading-none">
+      {/* Divisor */}
+      <div className="h-6 w-px" style={{ background: 'rgba(255,255,255,0.15)' }} />
+
+      {/* Subtítulo do produto */}
       <span
-        className="font-extrabold tracking-tight text-white"
-        style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '-0.02em' }}
-      >
-        MSB<span style={{ color: 'var(--brand-tecno)', marginLeft: 2 }}>·</span>
-      </span>
-      <span
-        className="font-semibold uppercase"
+        className="font-semibold uppercase tracking-widest"
         style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 9,
-          letterSpacing: '0.16em',
-          color: 'rgba(255,255,255,0.4)',
-          marginTop: 3,
+          letterSpacing: '0.18em',
+          color: 'rgba(255,255,255,0.45)',
         }}
       >
         KAIZEN · FIBRA

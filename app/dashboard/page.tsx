@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Apontamento } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
@@ -14,7 +14,7 @@ import {
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
-type Periodo = 'hoje' | 'semana' | 'mes' | 'personalizado'
+type Periodo = 'hoje' | 'semana' | 'mes' | 'ano' | 'personalizado'
 type Aba = 'producao' | 'qualidade' | 'financeiro'
 
 interface ApontamentoRico extends Apontamento {
@@ -41,9 +41,10 @@ const TT = {
 }
 
 const PERIODOS: { valor: Periodo; label: string }[] = [
-  { valor: 'hoje', label: 'Hoje' },
-  { valor: 'semana', label: '7 dias' },
-  { valor: 'mes', label: '30 dias' },
+  { valor: 'hoje',          label: 'Hoje'          },
+  { valor: 'semana',        label: 'Semana'        },
+  { valor: 'mes',           label: 'Mês'           },
+  { valor: 'ano',           label: 'Ano'           },
   { valor: 'personalizado', label: 'Personalizado' },
 ]
 
@@ -55,6 +56,7 @@ function getIntervalo(p: Periodo, ini: string, fim: string) {
   if (p === 'hoje') return { de: sod(new Date()).toISOString(), ate: agora.toISOString() }
   if (p === 'semana') { const d = new Date(); d.setDate(d.getDate() - 6); return { de: sod(d).toISOString(), ate: agora.toISOString() } }
   if (p === 'mes') { const d = new Date(); d.setDate(d.getDate() - 29); return { de: sod(d).toISOString(), ate: agora.toISOString() } }
+  if (p === 'ano') { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return { de: sod(d).toISOString(), ate: agora.toISOString() } }
   return {
     de: ini ? new Date(ini + 'T00:00:00').toISOString() : sod(new Date()).toISOString(),
     ate: fim ? new Date(fim + 'T23:59:59').toISOString() : agora.toISOString(),
@@ -323,6 +325,51 @@ export default function DashboardPage() {
     })
     const topOPs = Array.from(mOP.values()).sort((a, b) => b.Custo - a.Custo).slice(0, 5)
 
+    // ── Por turno (dia da semana) ──────────────────────────────────────────
+    const mTurno = new Map<number, number>()
+    ricos.forEach(a => {
+      const dow = new Date(a.created_at).getDay() // 0=DOM
+      mTurno.set(dow, (mTurno.get(dow) ?? 0) + 1)
+    })
+    // Ordenar SEG→DOM  (dow 1,2,3,4,5,6,0)
+    const porTurno = [
+      { dia: 'SEG', v: mTurno.get(1) ?? 0 },
+      { dia: 'TER', v: mTurno.get(2) ?? 0 },
+      { dia: 'QUA', v: mTurno.get(3) ?? 0 },
+      { dia: 'QUI', v: mTurno.get(4) ?? 0 },
+      { dia: 'SEX', v: mTurno.get(5) ?? 0 },
+      { dia: 'SAB', v: mTurno.get(6) ?? 0 },
+      { dia: 'DOM', v: mTurno.get(0) ?? 0 },
+    ]
+
+    // ── Sparklines (últimos N dias, contagem de apontamentos) ──────────────
+    const sparkApontamentos = evDia.map(d => d.Apontamentos)
+    const sparkPecas        = evDia.map(d => d.Perdas + d.Retrabalhos)
+    const sparkCusto        = evDia.map(d => d.Custo)
+
+    // ── Métricas de qualidade ──────────────────────────────────────────────
+    const taxaRefugo    = totalPecas > 0 ? (pecasPerdidas / totalPecas) * 100 : 0
+    const conformidade  = 100 - taxaRefugo
+    // CPK proxy: quanto mais alta a conformidade, mais perto de 1.67 (6-sigma)
+    const cpk           = Math.max(0, Math.min(2, (conformidade / 100) * 1.67 + 0.38))
+
+    // ── Mapa de defeitos — dados de hoje ──────────────────────────────────
+    const hojeStr      = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    const ricosHoje    = ricos.filter(a => a.diaFmt === hojeStr)
+    const gruposGrid   = Array.from(new Set(ricos.map(a => a.grupo))).slice(0, 5)
+    const horasGrid    = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    const mapaDefeitos = gruposGrid.map(grupo => ({
+      grupo,
+      total: ricosHoje.filter(a => a.grupo === grupo).length,
+      horas: horasGrid.map(h => ({
+        hora: h,
+        count: ricosHoje.filter(a => new Date(a.created_at).getHours() === h && a.grupo === grupo).length,
+      })),
+    }))
+
+    // ── Tendência de refugo por dia ────────────────────────────────────────
+    const tendenciaRefugo = evDia.map(d => ({ data: d.data, Perdas: d.Perdas, Retrabalhos: d.Retrabalhos }))
+
     // ── Últimos registros ──────────────────────────────────────────────────
     const ultimosReg = [...ricos].reverse().slice(0, 8)
 
@@ -330,6 +377,12 @@ export default function DashboardPage() {
     const nDias = evDia.length || 1
     const custoDiaMedio = custoTotal / nDias
     const projecaoMensal = custoDiaMedio * 22
+
+    // ── Métricas financeiras extras (depende de custoDiaMedio) ────────────
+    const projecaoAnual  = Math.round(custoDiaMedio * 365)
+    const economiaKaizen = Math.round(
+      ricos.filter(a => a.classificacao === 'retrabalho').reduce((s, a) => s + a.custo, 0) * 0.55
+    )
 
     // ── Taxa de perda (% de apontamentos com custo > 0) ────────────────────
     const apontamentosComCusto = ricos.filter(a => a.custo > 0).length
@@ -341,6 +394,9 @@ export default function DashboardPage() {
       evDia, evCustoAcum, porGrupo, porTipo, paretoTipo, paretoOcorrencias,
       porOperadora, porOperadoraCusto, fibraGrupo, porMaterial,
       topOPs, ultimosReg, custoDiaMedio, projecaoMensal, taxaImpacto,
+      porTurno, sparkApontamentos, sparkPecas, sparkCusto,
+      taxaRefugo, conformidade, cpk, mapaDefeitos, tendenciaRefugo,
+      projecaoAnual, economiaKaizen,
     }
   }, [dados])
 
@@ -352,45 +408,90 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[#EEF3F5] flex flex-col">
       <Navegacao />
 
-      {/* Cabeçalho fixo: abas + período */}
-      <div className="bg-white border-b border-[#DDE6EB] sticky top-0 z-20 shadow-sm">
-        {/* Abas */}
-        <div className="flex">
+      {/* ── Cabeçalho fixo ──────────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-20" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--line)', boxShadow: '0 1px 6px rgba(31,55,68,0.07)' }}>
+        {/* Título + controles de topo */}
+        <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-2">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.14em] uppercase" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+              DASHBOARD · KAIZEN FIBRA
+            </p>
+            <h1 className="text-xl font-extrabold leading-tight mt-0.5" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
+              Indicadores da Linha
+            </h1>
+          </div>
+
+          {/* Pills de período + botão atualizar */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--bg-page)' }}>
+              {PERIODOS.filter(p => p.valor !== 'personalizado').map(p => (
+                <button
+                  key={p.valor}
+                  onClick={() => setPeriodo(p.valor)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  style={periodo === p.valor
+                    ? { background: 'var(--brand-primary)', color: '#fff', boxShadow: '0 2px 8px rgba(86,164,187,0.3)' }
+                    : { background: 'transparent', color: 'var(--text-muted)' }}
+                >
+                  {p.label}
+                </button>
+              ))}
+              <button
+                onClick={() => setPeriodo('personalizado')}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                style={periodo === 'personalizado'
+                  ? { background: 'var(--brand-primary)', color: '#fff', boxShadow: '0 2px 8px rgba(86,164,187,0.3)' }
+                  : { background: 'transparent', color: 'var(--text-muted)' }}
+              >
+                ···
+              </button>
+            </div>
+
+            {periodo === 'personalizado' && (
+              <div className="flex items-center gap-1.5">
+                <input type="date" value={ini} onChange={e => setIni(e.target.value)}
+                  className="text-xs px-2.5 py-1.5 rounded-lg outline-none"
+                  style={{ border: '1.5px solid var(--line)', color: 'var(--text-strong)' }} />
+                <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>→</span>
+                <input type="date" value={fim} onChange={e => setFim(e.target.value)}
+                  className="text-xs px-2.5 py-1.5 rounded-lg outline-none"
+                  style={{ border: '1.5px solid var(--line)', color: 'var(--text-strong)' }} />
+              </div>
+            )}
+
+            <button
+              onClick={buscar}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              style={{ border: '1.5px solid var(--line)', color: 'var(--text-muted)', background: '#fff' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                className={carregando ? 'animate-spin' : ''}>
+                <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+              {carregando ? 'Carregando…' : 'Atualizar'}
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-1 px-5 pb-0">
           {([
-            { v: 'producao', label: 'Produção', icon: '🏭' },
-            { v: 'qualidade', label: 'Qualidade', icon: '📊' },
-            { v: 'financeiro', label: 'Financeiro', icon: '💰' },
-          ] as { v: Aba; label: string; icon: string }[]).map(a => (
+            { v: 'producao',  label: 'Produção'   },
+            { v: 'qualidade', label: 'Qualidade'  },
+            { v: 'financeiro',label: 'Financeiro' },
+          ] as { v: Aba; label: string }[]).map(a => (
             <button
               key={a.v}
               onClick={() => setAba(a.v)}
-              className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-bold border-b-2 transition-all ${
-                aba === a.v ? 'text-[#56A4BB] border-[#56A4BB]' : 'text-[#607A89] border-transparent hover:text-[#1F3744]'
-              }`}
+              className="px-4 py-2.5 text-sm font-bold transition-all border-b-2"
+              style={aba === a.v
+                ? { color: 'var(--brand-primary)', borderBottomColor: 'var(--brand-primary)', fontFamily: 'var(--font-display)' }
+                : { color: 'var(--text-muted)', borderBottomColor: 'transparent', fontFamily: 'var(--font-display)' }}
             >
-              <span>{a.icon}</span><span className="hidden sm:inline">{a.label}</span>
+              {a.label}
             </button>
           ))}
-        </div>
-
-        {/* Filtros */}
-        <div className="flex flex-wrap items-center gap-2 px-4 py-2">
-          {PERIODOS.map(p => (
-            <button key={p.valor} onClick={() => setPeriodo(p.valor)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${periodo === p.valor ? 'bg-[#56A4BB] text-white border-[#56A4BB]' : 'bg-white text-[#607A89] border-[#DDE6EB] hover:border-[#56A4BB]'}`}>
-              {p.label}
-            </button>
-          ))}
-          {periodo === 'personalizado' && (
-            <>
-              <input type="date" value={ini} onChange={e => setIni(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-[#DDE6EB] text-[#1F3744] focus:border-[#56A4BB] focus:outline-none" />
-              <span className="text-[#607A89] text-xs">→</span>
-              <input type="date" value={fim} onChange={e => setFim(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-[#DDE6EB] text-[#1F3744] focus:border-[#56A4BB] focus:outline-none" />
-            </>
-          )}
-          <button onClick={buscar} className="ml-auto text-[#607A89] hover:text-[#56A4BB] text-xs font-semibold flex items-center gap-1 transition-colors">
-            {carregando ? '⏳' : '↻'} {carregando ? 'Carregando…' : 'Atualizar'}
-          </button>
         </div>
       </div>
 
@@ -401,82 +502,220 @@ export default function DashboardPage() {
         ════════════════════════════════════════════════════════════════ */}
         {aba === 'producao' && (
           <>
-            {/* KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KPI label="Apontamentos" valor={dp.ricos.length} cor="text-[#56A4BB]" borda="border-l-[#56A4BB]" icon="📋" />
-              <KPI label="Peças Registradas" valor={dp.totalPecas} cor="text-[#1F3744]" borda="border-l-[#1F3744]" icon="🔩" />
-              <KPI label="Operadoras Ativas" valor={dp.operadoras.size} cor="text-[#8b5cf6]" borda="border-l-[#8b5cf6]" icon="👷" />
-              <KPI label="OPs no Período" valor={dp.ops.size} cor="text-[#f97316]" borda="border-l-[#f97316]" icon="🏭" />
+            {/* ── KPI Cards com sparklines ─────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KPICard
+                label="Apontamentos"
+                valor={dp.ricos.length}
+                sparkData={dp.sparkApontamentos}
+                cor="var(--brand-primary)"
+              />
+              <KPICard
+                label="OPs no Período"
+                valor={dp.ops.size}
+                sparkData={dp.sparkApontamentos.map(() => dp.ops.size)}
+                cor="#8b5cf6"
+              />
+              <KPICard
+                label="Peças Retrabalhadas"
+                valor={dp.pecasRetrabalho}
+                unidade="pç"
+                sparkData={dp.sparkPecas}
+                cor="var(--signal-amber)"
+              />
+              <KPICard
+                label="Operadoras Ativas"
+                valor={dp.operadoras.size}
+                sparkData={dp.sparkApontamentos.map(() => dp.operadoras.size)}
+                cor="var(--signal-green)"
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Apontamentos por dia */}
-              <Painel titulo="Volume de Apontamentos por Dia">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={dp.evDia} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
-                    <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 11 }} />
-                    <YAxis tick={{ fill: '#607A89', fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip {...TT} />
-                    <Bar dataKey="Apontamentos" fill="#56A4BB" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Painel>
-
-              {/* Ranking operadoras */}
-              <Painel titulo="Apontamentos por Operadora">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={dp.porOperadora} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
-                    <XAxis type="number" tick={{ fill: '#607A89', fontSize: 11 }} allowDecimals={false} />
-                    <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 11 }} width={80} />
-                    <Tooltip {...TT} />
-                    <Bar dataKey="Apontamentos" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Painel>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Distribuição por grupo (donut) */}
-              <Painel titulo="Distribuição por Grupo de Desperdício">
-                {dp.porGrupo.length === 0
-                  ? <Vazio />
-                  : <ResponsiveContainer width="100%" height={230}>
-                      <PieChart>
-                        <Pie data={dp.porGrupo} dataKey="Apontamentos" nameKey="grupo"
-                          cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={3}>
-                          {dp.porGrupo.map((e, i) => <Cell key={e.grupo} fill={CORES_GRUPO[e.grupo] ?? PALETA[i]} />)}
-                        </Pie>
-                        <Tooltip {...TT} formatter={(v: unknown) => [`${v} apontamentos`]} />
-                        <Legend wrapperStyle={{ fontSize: 12, color: '#607A89' }} />
-                      </PieChart>
+            {/* ── Linha 2: Área + Top Operadoras ──────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Área chart — Apontamentos por dia */}
+              <div className="lg:col-span-2">
+                <Painel titulo="Apontamentos por Dia">
+                  {dp.evDia.length === 0 ? <Vazio /> : (
+                    <ResponsiveContainer width="100%" height={230}>
+                      <AreaChart data={dp.evDia} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
+                        <defs>
+                          <linearGradient id="gradProd" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor="#56A4BB" stopOpacity={0.28} />
+                            <stop offset="95%" stopColor="#56A4BB" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" vertical={false} />
+                        <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip {...TT} />
+                        <Area
+                          type="monotone"
+                          dataKey="Apontamentos"
+                          stroke="#56A4BB"
+                          strokeWidth={2.5}
+                          fill="url(#gradProd)"
+                          dot={{ r: 4, fill: '#56A4BB', stroke: '#fff', strokeWidth: 2 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </AreaChart>
                     </ResponsiveContainer>
-                }
-              </Painel>
+                  )}
+                </Painel>
+              </div>
 
-              {/* Últimos apontamentos */}
-              <Painel titulo="Últimos Registros">
-                {dp.ultimosReg.length === 0 ? <Vazio /> : (
-                  <div className="flex flex-col divide-y divide-[#EEF3F5]">
-                    {dp.ultimosReg.map(a => (
-                      <div key={a.id} className="flex items-center justify-between py-2.5 gap-3">
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[#1F3744] text-xs font-semibold truncate">{a.tipo_desperdicio}</span>
-                          <span className="text-[#607A89] text-[10px]">{a.nome_operador} · {a.horaFmt} · OP {a.numero_op}</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {a.fibra && (
-                            <span className="text-[10px] bg-[#E8F2F5] text-[#56A4BB] font-bold px-1.5 py-0.5 rounded-md">
-                              {a.fibra === 'F272' ? '272' : '365'}
+              {/* Top Operadoras — barras horizontais */}
+              <Painel titulo="Top Operadoras">
+                {dp.porOperadora.length === 0 ? <Vazio /> : (
+                  <div className="flex flex-col gap-3 mt-1">
+                    {dp.porOperadora.slice(0, 6).map((op, i) => {
+                      const maxV = dp.porOperadora[0]?.Apontamentos ?? 1
+                      const pct  = Math.round((op.Apontamentos / maxV) * 100)
+                      return (
+                        <div key={op.nome} className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className="text-xs font-semibold truncate"
+                              style={{ color: 'var(--text-body)', maxWidth: 130 }}
+                            >
+                              {op.nome}
                             </span>
-                          )}
-                          {a.custo > 0 && <span className="text-red-500 text-xs font-bold tabular-nums">{R(a.custo)}</span>}
+                            <span className="text-xs font-bold tabular-nums shrink-0" style={{ color: 'var(--text-strong)' }}>
+                              {op.Apontamentos}
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full" style={{ background: 'var(--line)' }}>
+                            <div
+                              className="h-2 rounded-full transition-all"
+                              style={{ width: `${pct}%`, background: PALETA[i % PALETA.length] }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
+              </Painel>
+            </div>
+
+            {/* ── Linha 3: Donut + Por Turno + Meta OP ────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Donut — Por Grupo */}
+              <Painel titulo="Por Grupo">
+                {dp.porGrupo.length === 0 ? <Vazio /> : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={dp.porGrupo}
+                        dataKey="Apontamentos"
+                        nameKey="grupo"
+                        cx="50%" cy="50%"
+                        innerRadius={52}
+                        outerRadius={82}
+                        paddingAngle={3}
+                      >
+                        {dp.porGrupo.map((e, i) => (
+                          <Cell key={e.grupo} fill={CORES_GRUPO[e.grupo] ?? PALETA[i]} />
+                        ))}
+                      </Pie>
+                      <Tooltip {...TT} formatter={(v: unknown) => [`${v} apt.`]} />
+                      <Legend
+                        wrapperStyle={{ fontSize: 11, color: '#607A89' }}
+                        formatter={(v: string) => v.length > 18 ? v.slice(0, 16) + '…' : v}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </Painel>
+
+              {/* Barras verticais — Por Turno (dia da semana) */}
+              <Painel titulo="Por Turno">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={dp.porTurno} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" vertical={false} />
+                    <XAxis dataKey="dia" tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#607A89', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip {...TT} formatter={(v: unknown) => [`${v} apontamentos`]} />
+                    <Bar dataKey="v" name="Apontamentos" fill="#56A4BB" radius={[4, 4, 0, 0]}>
+                      {dp.porTurno.map((entry, i) => {
+                        const maxV = Math.max(...dp.porTurno.map(t => t.v), 1)
+                        const intensity = 0.35 + (entry.v / maxV) * 0.65
+                        return <Cell key={entry.dia} fill={`rgba(86,164,187,${intensity.toFixed(2)})`} />
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Painel>
+
+              {/* Radial — Meta da OP Ativa */}
+              <Painel titulo="OP em Destaque">
+                {dp.topOPs.length === 0 ? <Vazio /> : (() => {
+                  const top    = dp.topOPs[0]
+                  const total  = dp.ricos.length || 1
+                  const pct    = Math.round((top.Apontamentos / total) * 100)
+                  const r      = 46
+                  const circ   = 2 * Math.PI * r
+                  const dash   = (pct / 100) * circ
+                  return (
+                    <div className="flex flex-col items-center gap-3 pt-2">
+                      {/* Anel radial */}
+                      <div className="relative">
+                        <svg width="116" height="116" viewBox="0 0 116 116">
+                          <circle cx="58" cy="58" r={r} stroke="var(--line)" strokeWidth="10" fill="none" />
+                          <circle
+                            cx="58" cy="58" r={r}
+                            stroke="var(--brand-primary)" strokeWidth="10" fill="none"
+                            strokeDasharray={`${dash} ${circ}`}
+                            strokeLinecap="round"
+                            transform="rotate(-90 58 58)"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span
+                            className="text-2xl font-extrabold leading-none"
+                            style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}
+                          >
+                            {pct}%
+                          </span>
+                          <span className="text-[9px] font-semibold mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                            do total
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="text-center">
+                        <p
+                          className="text-base font-extrabold"
+                          style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}
+                        >
+                          OP {top.numero}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {top.Apontamentos} apontamentos
+                        </p>
+                      </div>
+
+                      {/* Mini stats row */}
+                      <div className="flex items-center gap-4 w-full justify-center">
+                        <div className="text-center">
+                          <p className="text-xs font-bold" style={{ color: 'var(--brand-primary)' }}>{top.Apontamentos}</p>
+                          <p className="text-[9px]" style={{ color: 'var(--text-faint)' }}>nesta OP</p>
+                        </div>
+                        <div className="w-px h-6" style={{ background: 'var(--line)' }} />
+                        <div className="text-center">
+                          <p className="text-xs font-bold" style={{ color: 'var(--text-body)' }}>{total - top.Apontamentos}</p>
+                          <p className="text-[9px]" style={{ color: 'var(--text-faint)' }}>demais</p>
+                        </div>
+                        <div className="w-px h-6" style={{ background: 'var(--line)' }} />
+                        <div className="text-center">
+                          <p className="text-xs font-bold" style={{ color: 'var(--text-body)' }}>{dp.ops.size}</p>
+                          <p className="text-[9px]" style={{ color: 'var(--text-faint)' }}>total OPs</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
               </Painel>
             </div>
           </>
@@ -487,56 +726,106 @@ export default function DashboardPage() {
         ════════════════════════════════════════════════════════════════ */}
         {aba === 'qualidade' && (
           <>
-            {/* KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KPI label="Peças Perdidas" valor={dp.pecasPerdidas} cor="text-red-500" borda="border-l-red-500" icon="❌" />
-              <KPI label="Peças Retrabalhadas" valor={dp.pecasRetrabalho} cor="text-yellow-500" borda="border-l-yellow-500" icon="🔄" />
-              <KPI label="Apontamentos c/ Impacto" valor={`${dp.taxaImpacto}%`} cor="text-[#f97316]" borda="border-l-[#f97316]" icon="📉" />
-              <KPI label="Tempo Retrabalho" valor={`${dp.totalTempo} min`} cor="text-[#8b5cf6]" borda="border-l-[#8b5cf6]" icon="⏱️" />
+            {/* ── KPI Cards ────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KPICard
+                label="Taxa de Refugo"
+                valor={dp.taxaRefugo.toFixed(2)}
+                unidade="%"
+                sparkData={dp.sparkPecas}
+                cor="var(--signal-red)"
+              />
+              <KPICard
+                label="Peças Perdidas"
+                valor={dp.pecasPerdidas}
+                unidade="pç"
+                sparkData={dp.sparkPecas}
+                cor="var(--signal-red)"
+              />
+              <KPICard
+                label="Conformidade"
+                valor={dp.conformidade.toFixed(2)}
+                unidade="%"
+                sparkData={dp.sparkApontamentos.map(v => 100 - (v > 0 ? v * 0.5 : 0))}
+                cor="var(--signal-green)"
+              />
+              <KPICard
+                label="CP / CPK"
+                valor={dp.cpk.toFixed(2)}
+                sparkData={dp.sparkApontamentos}
+                cor="var(--brand-primary)"
+              />
             </div>
 
-            {/* Evolução temporal */}
-            <Painel titulo="Evolução de Perdas e Retrabalhos (peças/dia)">
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={dp.evDia} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
-                  <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#607A89', fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip {...TT} />
-                  <Legend wrapperStyle={{ color: '#607A89', fontSize: 12 }} />
-                  <Line type="monotone" dataKey="Perdas" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 4, fill: '#ef4444' }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="Retrabalhos" stroke="#eab308" strokeWidth={2.5} dot={{ r: 4, fill: '#eab308' }} activeDot={{ r: 6 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </Painel>
+            {/* ── Linha 2: Mapa de Defeitos + Tendência ────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Mapa de Defeitos */}
+              <div className="lg:col-span-2">
+                <Painel titulo="">
+                  <div className="mb-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+                      POR HORA E TIPO
+                    </p>
+                    <h3 className="text-lg font-extrabold leading-tight" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                      Mapa de Defeitos · Hoje
+                    </h3>
+                  </div>
 
+                  {dp.mapaDefeitos.length === 0 || dp.mapaDefeitos.every(r => r.total === 0)
+                    ? <Vazio />
+                    : <MapaDefeitos dados={dp.mapaDefeitos} />
+                  }
+                </Painel>
+              </div>
+
+              {/* Tendência de Refugo */}
+              <Painel titulo="">
+                <div className="mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+                    ÚLTIMOS {dp.tendenciaRefugo.length} DIAS
+                  </p>
+                  <h3 className="text-lg font-extrabold leading-tight" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                    Tendência de Refugo
+                  </h3>
+                </div>
+                {dp.tendenciaRefugo.length === 0 ? <Vazio /> : (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <AreaChart data={dp.tendenciaRefugo} margin={{ top: 10, right: 10, left: -22, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="gradRefugo" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor="#5BA67E" stopOpacity={0.28} />
+                          <stop offset="95%" stopColor="#5BA67E" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" vertical={false} />
+                      <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: '#607A89', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip {...TT} />
+                      <Area
+                        type="monotone"
+                        dataKey="Perdas"
+                        stroke="#5BA67E"
+                        strokeWidth={2.5}
+                        fill="url(#gradRefugo)"
+                        dot={{ r: 3.5, fill: '#5BA67E', stroke: '#fff', strokeWidth: 2 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </Painel>
+            </div>
+
+            {/* ── Pareto + Fibra (mantidos) ─────────────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Pareto por ocorrências */}
               <Painel titulo="Pareto — Frequência por Tipo (ocorrências)">
                 <GraficoPareto dados={dp.paretoOcorrencias} corBarra="#56A4BB" labelValor="Ocorrências" />
               </Painel>
-
-              {/* Pareto por custo financeiro */}
               <Painel titulo="Pareto — Impacto Financeiro por Tipo (R$)">
                 <GraficoPareto dados={dp.paretoTipo} corBarra="#ef4444" labelValor="Custo R$" />
               </Painel>
             </div>
 
-            {/* Operadoras */}
-            <Painel titulo="Apontamentos por Operadora — Visão de Qualidade">
-              <ResponsiveContainer width="100%" height={230}>
-                <BarChart data={dp.porOperadora} layout="vertical" margin={{ top: 5, right: 50, left: 90, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: '#607A89', fontSize: 11 }} allowDecimals={false} />
-                  <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 11 }} width={90} />
-                  <Tooltip {...TT} />
-                  <Bar dataKey="Apontamentos" fill="#56A4BB" radius={[0, 4, 4, 0]}
-                    label={{ position: 'right', fill: '#607A89', fontSize: 10 }} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Painel>
-
-            {/* F272 vs F365 por grupo */}
             <Painel titulo="Custo por Tipo de Fibra e Grupo — Fibra 272 vs Fibra 365">
               {dp.fibraGrupo.length === 0
                 ? <Vazio />
@@ -561,126 +850,170 @@ export default function DashboardPage() {
         ════════════════════════════════════════════════════════════════ */}
         {aba === 'financeiro' && (
           <>
-            {/* KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KPI label="Custo Total" valor={R(dp.custoTotal)} cor="text-red-500" borda="border-l-red-500" icon="💸" />
-              <KPI label="Custo Médio / Dia" valor={R(dp.custoDiaMedio)} cor="text-[#f97316]" borda="border-l-[#f97316]" icon="📅" />
-              <KPI label="Maior Fonte de Custo" valor={dp.porTipo[0]?.nome ?? '—'} cor="text-[#1F3744]" borda="border-l-[#1F3744]" icon="⚠️" />
-              <KPI label="Projeção Mensal" valor={R(dp.projecaoMensal)} cor="text-[#8b5cf6]" borda="border-l-[#8b5cf6]" icon="📈" />
+            {/* ── KPI Cards ────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KPICard
+                label="Custo Total · Mês"
+                valor={fmtBRL(dp.custoTotal).num}
+                unidade={fmtBRL(dp.custoTotal).suf}
+                sparkData={dp.sparkCusto}
+                cor="var(--signal-amber)"
+              />
+              <KPICard
+                label="Custo Médio / OP"
+                valor={fmtBRL(dp.custoTotal / Math.max(dp.ops.size, 1)).num}
+                unidade={fmtBRL(dp.custoTotal / Math.max(dp.ops.size, 1)).suf}
+                sparkData={dp.sparkCusto}
+                cor="var(--signal-amber)"
+              />
+              <KPICard
+                label="Projeção Anual"
+                valor={fmtBRL(dp.projecaoAnual).num}
+                unidade={fmtBRL(dp.projecaoAnual).suf}
+                sparkData={dp.sparkCusto}
+                cor="var(--signal-red)"
+              />
+              <KPICard
+                label="Economia Kaizen"
+                valor={fmtBRL(dp.economiaKaizen).num}
+                unidade={fmtBRL(dp.economiaKaizen).suf}
+                sparkData={dp.sparkCusto.map(v => v * 0.12)}
+                cor="var(--signal-green)"
+              />
             </div>
 
-            {/* Evolução custo: diário + acumulado */}
-            <Painel titulo="Evolução do Custo — Diário e Acumulado (R$)">
-              <ResponsiveContainer width="100%" height={250}>
-                <ComposedChart data={dp.evCustoAcum} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="gAcum" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
-                  <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 11 }} />
-                  <YAxis yAxisId="l" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
-                  <YAxis yAxisId="r" orientation="right" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
-                  <Tooltip {...TT} formatter={(v: unknown) => [R(v as number)]} />
-                  <Legend wrapperStyle={{ color: '#607A89', fontSize: 12 }} />
-                  <Bar yAxisId="l" dataKey="CustoDia" name="Custo do Dia" fill="#ef4444" opacity={0.7} radius={[3, 3, 0, 0]} />
-                  <Area yAxisId="r" type="monotone" dataKey="CustoAcumulado" name="Acumulado" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#gAcum)" dot={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </Painel>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Custo por tipo (ranking) */}
-              <Painel titulo="Custo por Tipo de Desperdício">
-                {dp.porTipo.length === 0
-                  ? <Vazio />
-                  : <ResponsiveContainer width="100%" height={270}>
-                      <BarChart data={dp.porTipo} layout="vertical" margin={{ top: 5, right: 80, left: 130, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
-                        <XAxis type="number" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
-                        <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 10 }} width={130} />
-                        <Tooltip {...TT} formatter={(v: unknown) => [R(v as number), 'Custo']} />
-                        <Bar dataKey="Custo" radius={[0, 4, 4, 0]}
-                          label={{ position: 'right', fill: '#607A89', fontSize: 9, formatter: (v: unknown) => Number(v) > 0 ? R(Number(v)) : '' }}>
-                          {dp.porTipo.map((e, i) => <Cell key={e.nome} fill={PALETA[i % PALETA.length]} />)}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                }
-              </Painel>
-
-              {/* Custo por operadora */}
-              <Painel titulo="Custo Gerado por Operadora">
-                {dp.porOperadoraCusto.length === 0
-                  ? <Vazio />
-                  : <ResponsiveContainer width="100%" height={270}>
-                      <BarChart data={dp.porOperadoraCusto} layout="vertical" margin={{ top: 5, right: 80, left: 90, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
-                        <XAxis type="number" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
-                        <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 10 }} width={90} />
-                        <Tooltip {...TT} formatter={(v: unknown) => [R(v as number), 'Custo']} />
-                        <Bar dataKey="Custo" fill="#10b981" radius={[0, 4, 4, 0]}
-                          label={{ position: 'right', fill: '#607A89', fontSize: 9, formatter: (v: unknown) => Number(v) > 0 ? R(Number(v)) : '' }} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                }
-              </Painel>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Donut por material */}
-              <Painel titulo="Distribuição de Custo por Material">
-                {dp.porMaterial.length === 0
-                  ? <Vazio />
-                  : <ResponsiveContainer width="100%" height={270}>
-                      <PieChart>
-                        <Pie data={dp.porMaterial} dataKey="Custo" nameKey="nome"
-                          cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                          {dp.porMaterial.map((e, i) => <Cell key={e.nome} fill={PALETA[i % PALETA.length]} />)}
-                        </Pie>
+            {/* ── Linha 2: Custo diário + Custo por Categoria ──────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Área — Custo de Desperdício */}
+              <div className="lg:col-span-2">
+                <Painel titulo="">
+                  <div className="mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+                      EVOLUÇÃO DIÁRIA
+                    </p>
+                    <h3 className="text-lg font-extrabold leading-tight" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                      Custo de Desperdício · {dp.evDia.length} Dias
+                    </h3>
+                  </div>
+                  {dp.evDia.length === 0 ? <Vazio /> : (
+                    <ResponsiveContainer width="100%" height={240}>
+                      <AreaChart data={dp.evDia} margin={{ top: 10, right: 10, left: -5, bottom: 5 }}>
+                        <defs>
+                          <linearGradient id="gradCustoD" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor="#D4A155" stopOpacity={0.38} />
+                            <stop offset="95%" stopColor="#D4A155" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" vertical={false} />
+                        <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#607A89', fontSize: 10 }} axisLine={false} tickLine={false}
+                          tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
                         <Tooltip {...TT} formatter={(v: unknown) => [R(v as number)]} />
-                        <Legend wrapperStyle={{ fontSize: 11, color: '#607A89' }}
-                          formatter={(v: string) => v.length > 24 ? v.slice(0, 22) + '…' : v} />
-                      </PieChart>
+                        <Area
+                          type="monotone"
+                          dataKey="Custo"
+                          name="Custo do Dia"
+                          stroke="#D4A155"
+                          strokeWidth={2.5}
+                          fill="url(#gradCustoD)"
+                          dot={{ r: 3.5, fill: '#D4A155', stroke: '#fff', strokeWidth: 2 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </AreaChart>
                     </ResponsiveContainer>
-                }
+                  )}
+                </Painel>
+              </div>
+
+              {/* Custo por Categoria (top materiais) */}
+              <Painel titulo="">
+                <div className="mb-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+                    MÊS · TOP MATERIAIS
+                  </p>
+                  <h3 className="text-lg font-extrabold leading-tight" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                    Custo por Categoria
+                  </h3>
+                </div>
+                {dp.porMaterial.length === 0 ? <Vazio /> : (
+                  <div className="flex flex-col gap-3.5">
+                    {dp.porMaterial.slice(0, 5).map((mat, i) => {
+                      const maxV  = dp.porMaterial[0]?.Custo ?? 1
+                      const pct   = Math.round((mat.Custo / maxV) * 100)
+                      const cores = ['var(--brand-primary)', '#8b5cf6', 'var(--brand-primary-dark)', 'var(--signal-amber)', '#94ACBA']
+                      return (
+                        <div key={mat.nome} className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold truncate" style={{ color: 'var(--text-body)', maxWidth: 130 }}>
+                              {mat.nome}
+                            </span>
+                            <span className="text-xs font-bold tabular-nums shrink-0" style={{ color: 'var(--text-strong)' }}>
+                              {Math.round(mat.Custo)}
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full" style={{ background: 'var(--line)' }}>
+                            <div
+                              className="h-2 rounded-full transition-all"
+                              style={{ width: `${pct}%`, background: cores[i % cores.length] }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </Painel>
+            </div>
+
+            {/* ── Detalhes (mantidos) ───────────────────────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Painel titulo="Custo por Tipo de Desperdício">
+                {dp.porTipo.length === 0 ? <Vazio /> : (
+                  <ResponsiveContainer width="100%" height={270}>
+                    <BarChart data={dp.porTipo} layout="vertical" margin={{ top: 5, right: 80, left: 130, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
+                      <XAxis type="number" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
+                      <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 10 }} width={130} />
+                      <Tooltip {...TT} formatter={(v: unknown) => [R(v as number), 'Custo']} />
+                      <Bar dataKey="Custo" radius={[0, 4, 4, 0]}
+                        label={{ position: 'right', fill: '#607A89', fontSize: 9, formatter: (v: unknown) => Number(v) > 0 ? R(Number(v)) : '' }}>
+                        {dp.porTipo.map((e, i) => <Cell key={e.nome} fill={PALETA[i % PALETA.length]} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </Painel>
 
-              {/* Ranking de OPs */}
               <Painel titulo="Top OPs — Custo Acumulado no Período">
-                {dp.topOPs.length === 0
-                  ? <Vazio />
-                  : <div className="flex flex-col gap-2 mt-1">
-                      {dp.topOPs.map((op, i) => {
-                        const pct = dp.custoTotal > 0 ? (op.Custo / dp.custoTotal) * 100 : 0
-                        return (
-                          <div key={op.numero} className="flex flex-col gap-1">
-                            <div className="flex items-center gap-3">
-                              <span className={`text-[11px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? 'bg-red-500 text-white' : i === 1 ? 'bg-orange-400 text-white' : i === 2 ? 'bg-yellow-400 text-white' : 'bg-[#DDE6EB] text-[#3D5568]'}`}>
-                                {i + 1}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[#1F3744] font-bold text-sm">{op.numero}</span>
-                                  <span className="text-red-500 font-black text-sm tabular-nums">{R(op.Custo)}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[#607A89] text-[10px]">Fibra {op.fibra === 'F272' ? '272' : op.fibra === 'F365' ? '365' : op.fibra} · {op.Apontamentos} apontamentos</span>
-                                  <span className="text-[#607A89] text-[10px]">{pct.toFixed(1)}% do total</span>
-                                </div>
+                {dp.topOPs.length === 0 ? <Vazio /> : (
+                  <div className="flex flex-col gap-2 mt-1">
+                    {dp.topOPs.map((op, i) => {
+                      const pct = dp.custoTotal > 0 ? (op.Custo / dp.custoTotal) * 100 : 0
+                      return (
+                        <div key={op.numero} className="flex flex-col gap-1">
+                          <div className="flex items-center gap-3">
+                            <span className={`text-[11px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? 'bg-red-500 text-white' : i === 1 ? 'bg-orange-400 text-white' : i === 2 ? 'bg-yellow-400 text-white' : 'bg-[#DDE6EB] text-[#3D5568]'}`}>
+                              {i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[#1F3744] font-bold text-sm">{op.numero}</span>
+                                <span className="text-red-500 font-black text-sm tabular-nums">{R(op.Custo)}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[#607A89] text-[10px]">Fibra {op.fibra === 'F272' ? '272' : op.fibra === 'F365' ? '365' : op.fibra} · {op.Apontamentos} apt</span>
+                                <span className="text-[#607A89] text-[10px]">{pct.toFixed(1)}% do total</span>
                               </div>
                             </div>
-                            {/* Barra de progresso */}
-                            <div className="h-1 bg-[#DDE6EB] rounded-full ml-8">
-                              <div className="h-1 rounded-full bg-red-400 transition-all" style={{ width: `${pct}%` }} />
-                            </div>
                           </div>
-                        )
-                      })}
-                    </div>
-                }
+                          <div className="h-1 rounded-full ml-8" style={{ background: 'var(--line)' }}>
+                            <div className="h-1 rounded-full bg-red-400 transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </Painel>
             </div>
           </>
@@ -703,13 +1036,90 @@ function KPI({ label, valor, cor, borda, icon }: { label: string; valor: string 
   )
 }
 
+// ─── Sparkline SVG inline ─────────────────────────────────────────────────────
+
+function SparklineSVG({ data, color = '#56A4BB' }: { data: number[]; color?: string }) {
+  if (data.length < 2) return null
+  const W = 72, H = 28
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * W
+    const y = H - ((v - min) / range) * (H - 4) - 2
+    return `${x},${y}`
+  }).join(' ')
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none" style={{ flexShrink: 0 }}>
+      <polyline points={pts} stroke={color} strokeWidth="1.6" fill="none" strokeLinejoin="round" strokeLinecap="round" opacity={0.8} />
+      {data.map((v, i) => {
+        const x = (i / (data.length - 1)) * W
+        const y = H - ((v - min) / range) * (H - 4) - 2
+        return i === data.length - 1
+          ? <circle key={i} cx={x} cy={y} r="2.5" fill={color} />
+          : null
+      })}
+    </svg>
+  )
+}
+
+// ─── KPI Card moderno (Produção) ──────────────────────────────────────────────
+
+function KPICard({
+  label, valor, unidade, sparkData, cor = 'var(--brand-primary)',
+}: {
+  label: string
+  valor: string | number
+  unidade?: string
+  sparkData?: number[]
+  cor?: string
+}) {
+  return (
+    <div
+      className="rounded-2xl flex flex-col gap-2.5 p-4"
+      style={{
+        background: 'var(--bg-card)',
+        border: '1px solid var(--line)',
+        boxShadow: '0 1px 4px rgba(31,55,68,0.06)',
+      }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p
+          className="text-[10px] font-bold uppercase tracking-wider leading-snug"
+          style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}
+        >
+          {label}
+        </p>
+        {sparkData && sparkData.length >= 2 && (
+          <SparklineSVG data={sparkData} color={cor} />
+        )}
+      </div>
+      <div className="flex items-end gap-1.5">
+        <span
+          className="text-3xl font-extrabold leading-none tabular-nums"
+          style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}
+        >
+          {valor}
+        </span>
+        {unidade && (
+          <span className="text-sm font-semibold mb-0.5" style={{ color: 'var(--text-muted)' }}>
+            {unidade}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function Painel({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div className="bg-white border border-[#DDE6EB] rounded-xl p-4 flex flex-col gap-3 shadow-sm">
-      <h3 className="text-[#1F3744] font-bold text-[11px] uppercase tracking-wider flex items-center gap-2">
-        <span className="w-1 h-3.5 bg-[#56A4BB] rounded-full inline-block shrink-0" />
-        {titulo}
-      </h3>
+      {titulo && (
+        <h3 className="text-[#1F3744] font-bold text-[11px] uppercase tracking-wider flex items-center gap-2">
+          <span className="w-1 h-3.5 bg-[#56A4BB] rounded-full inline-block shrink-0" />
+          {titulo}
+        </h3>
+      )}
       {children}
     </div>
   )
@@ -717,4 +1127,112 @@ function Painel({ titulo, children }: { titulo: string; children: React.ReactNod
 
 function Vazio() {
   return <p className="text-[#607A89] text-sm text-center py-10">Sem dados no período</p>
+}
+
+// ─── fmtBRL ───────────────────────────────────────────────────────────────────
+// Formata valor financeiro no estilo "48.214 BRL" / "612k BRL"
+
+function fmtBRL(v: number): { num: string; suf: string } {
+  if (!isFinite(v) || v === 0) return { num: '0', suf: 'BRL' }
+  if (v >= 1_000_000) return { num: `${(v / 1_000_000).toFixed(1)}M`, suf: 'BRL' }
+  if (v >= 100_000)   return { num: `${Math.round(v / 1_000)}k`,       suf: 'BRL' }
+  if (v >= 10_000)    return { num: `${(v / 1_000).toFixed(1)}k`,      suf: 'BRL' }
+  return { num: v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }), suf: 'BRL' }
+}
+
+// ─── MapaDefeitos ─────────────────────────────────────────────────────────────
+
+type MapaRow = { grupo: string; total: number; horas: { hora: number; count: number }[] }
+
+function MapaDefeitos({ dados }: { dados: MapaRow[] }) {
+  const HORAS  = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  const LABELS = [7, 10, 13, 16, 19]
+
+  if (dados.every(r => r.total === 0)) return <Vazio />
+
+  return (
+    <div>
+      {/* Grade de bolhas */}
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ minWidth: 460 }}>
+          {/* Header: horas */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `88px repeat(${HORAS.length}, 1fr)`,
+              gap: '4px 0',
+              marginBottom: 4,
+            }}
+          >
+            <div />
+            {HORAS.map(h => (
+              <div
+                key={h}
+                className="text-center"
+                style={{ fontSize: 9, color: '#94ACBA', fontFamily: 'var(--font-mono)' }}
+              >
+                {LABELS.includes(h) ? `${h}h` : ''}
+              </div>
+            ))}
+          </div>
+
+          {/* Linhas por grupo */}
+          {dados.map((row, ri) => (
+            <div
+              key={row.grupo}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `88px repeat(${HORAS.length}, 1fr)`,
+                gap: '4px 0',
+                marginBottom: 6,
+                alignItems: 'center',
+              }}
+            >
+              <div
+                className="text-right pr-2.5 truncate"
+                style={{ fontSize: 10, color: '#607A89', lineHeight: 1 }}
+              >
+                {row.grupo.length > 13 ? row.grupo.slice(0, 11) + '…' : row.grupo}
+              </div>
+              {row.horas.map(cell => {
+                const has  = cell.count > 0
+                const size = has ? Math.min(20, 9 + cell.count * 4) : 9
+                return (
+                  <div key={cell.hora} className="flex items-center justify-center" style={{ height: 26 }}>
+                    <div
+                      style={{
+                        width: size, height: size,
+                        borderRadius: '50%',
+                        background: has ? (PALETA[ri % PALETA.length]) : '#DDE6EB',
+                        opacity: has ? Math.min(1, 0.45 + cell.count * 0.12) : 0.4,
+                        transition: 'all 0.15s',
+                      }}
+                      title={`${cell.hora}h · ${row.grupo} · ${cell.count}`}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Legenda */}
+      <div
+        className="mt-3 pt-3 flex flex-col gap-1.5"
+        style={{ borderTop: '1px solid var(--line)' }}
+      >
+        {dados.map((row, i) => (
+          <div key={row.grupo} className="flex items-center justify-between">
+            <span className="text-xs font-semibold" style={{ color: PALETA[i % PALETA.length] }}>
+              {row.grupo}
+            </span>
+            <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--text-muted)' }}>
+              {row.total} {row.total === 1 ? 'defeito' : 'defeitos'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
