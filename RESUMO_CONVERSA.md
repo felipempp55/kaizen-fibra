@@ -7,7 +7,7 @@
 
 **Kaizen Fibra** é um sistema de apontamento de desperdícios industriais para uso no chão de fábrica de fibra óptica da empresa **MSB (Medical System do Brasil)**. O operador preenche um formulário em etapas no tablet, registrando o tipo de desperdício ocorrido. Os gestores acompanham os dados em um dashboard com gráficos e filtros de período.
 
-Existe também um módulo de **CEP (Controle Estatístico de Processo)** para coleta de dados de qualidade (CTQs) e visualização de cartas de controle.
+Existe também um módulo de **CEP (Controle Estatístico de Processo)** para coleta de dados de qualidade (CTQs) e visualização de cartas de controle — atualmente **oculto da navegação** (em desenvolvimento), mas acessível via `/cep`.
 
 ---
 
@@ -21,12 +21,12 @@ Existe também um módulo de **CEP (Controle Estatístico de Processo)** para co
 - **Pasta local:** `C:\Users\felipe.pereira\Documents\kaizen-fibra`
 - **Deploy (produção):** Vercel — deploy automático a cada git push
 - **Dev server local:** `npm run dev` → http://localhost:3000
+- **Dev server na rede local:** `npm run dev -- --hostname 0.0.0.0` → http://192.168.0.103:3000
 
 ---
 
 ## Design — Paleta MSB
 
-O app usa o visual da MSB (Medical System do Brasil):
 - **Fundo:** `#F2F5F7` (cinza claro)
 - **Painéis:** `#FFFFFF` (branco) com borda `#DDE4EA`
 - **Cor primária (teal):** `#1E9FAC`
@@ -52,14 +52,14 @@ app/
   layout.tsx             — Layout raiz
 
 components/
-  Navegacao.tsx          — Header com 3 colunas: logo | tabs centralizados | data/hora
+  Navegacao.tsx          — Header: logo | tabs | data/hora (CEP oculto, mas rota existe)
   FormularioApontamento.tsx — Formulário multi-etapas dinâmico
   FormularioCEP.tsx      — Formulário multi-etapas para coleta CEP (atributo/variável)
-  CartasControle.tsx     — Cartas de controle (Carta p e Carta X̄-S com Cp/Cpk)
+  CartasControle.tsx     — Cartas de controle (Carta p e Carta I-MR com Cp/Cpk)
   EtapaIndicador.tsx     — Barra de progresso (teal), label abaixo das bolinhas
-  BotaoGrande.tsx        — Botão touch-friendly (branco com hover teal)
-  TecladoNumerico.tsx    — Teclado numérico customizado (tema claro)
-  GraficoPareto.tsx      — Gráfico Pareto reutilizável (barras + linha acumulada)
+  BotaoGrande.tsx        — Botão touch-friendly
+  TecladoNumerico.tsx    — Teclado numérico on-screen + suporte a teclado físico
+  GraficoPareto.tsx      — Gráfico Pareto reutilizável
 
 lib/
   supabase.ts            — Cliente Supabase
@@ -68,15 +68,13 @@ lib/
   ctqs.ts                — Definição dos 4 CTQs com LSI/LSE
 
 supabase/
-  schema.sql             — Script de criação da tabela apontamentos (já executado)
-  migration_v2.sql       — Migration com novos campos (já executado)
-  migration_cep.sql      — Migration para tabela cep_coletas (EXECUTAR no Supabase)
+  schema.sql             — Tabela apontamentos (já executado)
+  migration_v2.sql       — Novos campos (já executado)
+  migration_cep.sql      — Tabela cep_coletas (EXECUTAR no Supabase se ainda não fez)
 
 public/
-  Logo MSB-14.png        — Logo MSB azul (usada no header)
+  Logo MSB-14.png        — Logo MSB azul
   Logo MSB-12.png        — Logo MSB branca
-
-dashboard-mockup.html   — Mockup visual do dashboard (referência de design)
 ```
 
 ---
@@ -89,67 +87,46 @@ dashboard-mockup.html   — Mockup visual do dashboard (referência de design)
 | created_at | TIMESTAMPTZ | Default NOW() |
 | grupo | TEXT | Ex: "Epóxi", "Polimento" |
 | tipo_desperdicio | TEXT | Ex: "Entupimento do Ferrule" |
-| nome_operador | TEXT | Campo adicionado na v2 |
+| nome_operador | TEXT | |
 | numero_op | TEXT | Ordem de produção |
-| quantidade_pecas | INTEGER | Nullable (epóxi usa ml) |
-| quantidade_ml | NUMERIC | Nullable (só para epóxi) |
+| quantidade_pecas | INTEGER | Nullable |
+| quantidade_ml | NUMERIC | Nullable (só epóxi) |
 | classificacao | TEXT | 'perda' ou 'retrabalho' (nullable) |
 | tempo_minutos | INTEGER | Nullable |
 | observacao | TEXT | Nullable, não usado no form ainda |
 
-Também existe a **view `resumo_desperdicio`** para analytics.
+View `resumo_desperdicio` existe para analytics.
 
 ---
 
 ## Banco de dados — tabela `cep_coletas`
 
-⚠️ **ATENÇÃO**: Esta tabela precisa ser criada no Supabase executando `supabase/migration_cep.sql` no SQL Editor.
+⚠️ **Executar `supabase/migration_cep.sql` no SQL Editor do Supabase se ainda não foi feito.**
 
 | Coluna | Tipo | Notas |
 |---|---|---|
 | id | UUID | PK auto |
-| created_at | TIMESTAMPTZ | Default NOW() |
+| created_at | TIMESTAMPTZ | |
 | ctq_id | TEXT | Ex: 'comprimento_ferrule' |
-| ctq_nome | TEXT | Nome legível do CTQ |
+| ctq_nome | TEXT | |
 | tipo | TEXT | 'atributo' ou 'variavel' |
-| instrumento | TEXT | Ex: 'Relógio Comparador' |
-| data_coleta | DATE | Data da coleta |
-| numero_op | TEXT | Ordem de produção |
-| nome_operador | TEXT | Nome da operadora |
-| total_amostras | INTEGER | Total esperado de amostras |
-| total_ok | INTEGER | Nullable (só atributo) |
-| total_nok | INTEGER | Nullable (só atributo) |
-| media | NUMERIC | Nullable (só variável) |
-| desvio_padrao | NUMERIC | Nullable (só variável) |
-| valor_minimo | NUMERIC | Nullable (só variável) |
-| valor_maximo | NUMERIC | Nullable (só variável) |
-| amostras | JSONB | Array de amostras brutas |
+| instrumento | TEXT | |
+| data_coleta | DATE | |
+| numero_op | TEXT | |
+| nome_operador | TEXT | |
+| total_amostras | INTEGER | |
+| total_ok | INTEGER | Nullable |
+| total_nok | INTEGER | Nullable |
+| media | NUMERIC | Nullable |
+| desvio_padrao | NUMERIC | Nullable |
+| valor_minimo | NUMERIC | Nullable |
+| valor_maximo | NUMERIC | Nullable |
+| amostras | JSONB | Array de amostras individuais brutas |
 | status | TEXT | 'rascunho' ou 'finalizado' |
-
-SQL completo para criar a tabela:
-```sql
-CREATE TABLE IF NOT EXISTS cep_coletas (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  ctq_id TEXT NOT NULL, ctq_nome TEXT NOT NULL,
-  tipo TEXT NOT NULL CHECK (tipo IN ('atributo', 'variavel')),
-  instrumento TEXT, data_coleta DATE NOT NULL,
-  numero_op TEXT NOT NULL, nome_operador TEXT NOT NULL,
-  total_amostras INTEGER NOT NULL,
-  total_ok INTEGER, total_nok INTEGER,
-  media NUMERIC, desvio_padrao NUMERIC, valor_minimo NUMERIC, valor_maximo NUMERIC,
-  amostras JSONB NOT NULL DEFAULT '[]',
-  status TEXT NOT NULL DEFAULT 'finalizado' CHECK (status IN ('rascunho', 'finalizado'))
-);
-ALTER TABLE cep_coletas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Acesso público cep_coletas" ON cep_coletas FOR ALL USING (true) WITH CHECK (true);
-```
 
 ---
 
-## Módulo CEP — Os 4 CTQs
-
-Definidos em `lib/ctqs.ts`:
+## Módulo CEP — Os 4 CTQs (`lib/ctqs.ts`)
 
 | ID | Nome | Tipo | Instrumento | Total Amostras | LSI | LSE |
 |---|---|---|---|---|---|---|
@@ -162,47 +139,62 @@ Definidos em `lib/ctqs.ts`:
 
 ## Módulo CEP — Fluxo do FormularioCEP
 
-O componente `components/FormularioCEP.tsx` tem 4 etapas:
+4 etapas: **CTQ → Dados → Amostras → Confirmar**
 
-1. **CTQ** — Seleção do CTQ (grade de 4 botões)
-2. **Dados** — Data, nº OP, nome do operador
-3. **Amostras** — Coleta das amostras:
-   - **Atributo**: grade de botões OK (teal) / NOK (vermelho), avança automaticamente
-   - **Variável**: teclado decimal + navegação prev/next, permite editar qualquer amostra
-   - Grid visual 7 colunas mostrando status de preenchimento
-   - Botão **⏸ Pausar Coleta** salva rascunho no banco e mostra tela de confirmação
-   - Botão **Finalizar →** avança para confirmação independente de quantas amostras preenchidas
-4. **Confirmar** — Revisão dos dados + botão Salvar
-
-**Pause/Resume**: status='rascunho' no banco. Ao retomar, `DadosIniciaisCEP` é passado ao FormularioCEP que inicia direto na etapa de amostras, com as amostras já preenchidas.
+- **Atributo**: botões OK/NOK por amostra, avança automaticamente
+- **Variável**: teclado decimal on-screen (+ teclado físico), navega prev/next
+- **Pause/Resume**: status='rascunho' no banco. Retomada inicia direto na etapa Amostras com amostras pré-preenchidas
+- Botão **⏸ Pausar** salva rascunho; botão **Finalizar →** avança para confirmação com qualquer nº de amostras
 
 ---
 
-## Módulo CEP — Cartas de Controle (CartasControle.tsx)
+## Módulo CEP — Cartas de Controle (`CartasControle.tsx`)
 
-### Para CTQs de Atributo: Carta p
-- UCL_i = p̄ + 3√(p̄(1-p̄)/nᵢ) por subgrupo
-- LCL_i = max(0, p̄ - 3√(p̄(1-p̄)/nᵢ))
-- Pontos fora de controle (OOC) marcados em vermelho
+**Arquitetura:** 1 ponto por amostra individual (não por coleta). O componente achata o array `amostras` JSONB de todas as coletas.
 
-### Para CTQs de Variável: Carta X̄-S (dois gráficos)
-- Constantes de Montgomery: c₄(n), A₃, B₃, B₄
-- X̄̄ ± A₃ × S̄ (limites do gráfico de médias)
-- B₃ × S̄ e B₄ × S̄ (limites do gráfico de desvios)
-- **Linhas laranja sólidas** = limites de especificação (LSI/LSE)
-- **Linhas vermelhas tracejadas** = limites de controle
-- Pontos OOC em vermelho
+**Carta p (atributo):**
+- 1 ponto = 1 peça (OK=0, NOK=1)
+- p̄ = total NOK / total inspecionado; σ = √(p̄(1-p̄)) para n=1
+- UCL = p̄ + 3σ, LCL = max(0, p̄ - 3σ)
+- Dot verde = OK, vermelho = NOK
 
-### Cp/Cpk — Índices de Capabilidade (PainelCapabilidade)
-Calculados com estimativa σ̂ = S̄/c₄(n):
-- **Cp** = (LSE - LSI) / (6σ̂)
-- **Cpk** = min[(LSE - X̄̄) / (3σ̂), (X̄̄ - LSI) / (3σ̂)]
-- Cores: verde ≥ 1,67 | teal ≥ 1,33 | âmbar ≥ 1,00 | vermelho < 1,00
-- Auto-refresh a cada 30s
+**Carta I-MR (variável) — dois gráficos:**
+- Carta I: cada medição individual; UCL = X̄ + 2,66·MR̄; LCL = X̄ − 2,66·MR̄
+- Carta MR: amplitude móvel |Xᵢ − Xᵢ₋₁|; UCL_MR = 3,267·MR̄
+- Constantes: d₂=1,128; D₄=3,267
+
+**Cp/Cpk:** σ̂ = MR̄/d₂ · Cp = (LSE−LSI)/6σ̂ · Cpk = min[(LSE−X̄)/3σ̂, (X̄−LSI)/3σ̂]
+
+**Visual:**
+- Dot sólido = coleta finalizada
+- Dot oco = coleta em andamento (rascunho) — atualiza a cada 30s automaticamente
+- Dot vermelho = fora de controle (OOC)
+- Linhas laranja sólidas = limites de especificação (LSI/LSE)
+- Linhas vermelhas tracejadas = limites de controle
+
+**Comportamento da aba:**
+- `CartasControle` fica **sempre montado** (CSS `hidden` ao trocar de aba) — preserva CTQ selecionado e auto-refresh de 30s
+- Query inclui rascunhos + finalizados (sem filtro de status) para atualização em tempo real
 
 ---
 
-## Grupos e tipos de desperdício (lib/desperdicios.ts)
+## Suporte a teclado físico (`TecladoNumerico.tsx`)
+
+- Input oculto com `inputMode="none"` captura teclado físico sem abrir teclado virtual no tablet
+- Dígitos 0–9 e Backspace funcionam com teclado físico
+- Prop `onEnter?: () => void` — pai passa função para avançar etapa com Enter
+- Prop `autoFocus?: boolean` — foca automaticamente ao montar (usado em etapas onde é o único campo)
+- Visor clicável para focar o input oculto
+- Botões on-screen re-focam o input oculto após cada clique
+
+**Onde está ativo:**
+- Apontamento: OP (Enter avança), Quantidade (autoFocus + Enter), Tempo (autoFocus + Enter)
+- CEP: OP (Enter avança), teclado decimal das amostras variável (dígitos + `.`/`,` + Enter = próxima amostra)
+- Campos de texto (nome, instrumento, data): Enter avança etapa se todos os campos estiverem preenchidos
+
+---
+
+## Grupos e tipos de desperdício (`lib/desperdicios.ts`)
 
 | Grupo | Tipo | Unidade | Classificação | Tempo |
 |---|---|---|---|---|
@@ -217,109 +209,63 @@ Calculados com estimativa σ̂ = S̄/c₄(n):
 
 ---
 
-## Fluxo do formulário de Apontamento
-
-Etapas dinâmicas baseadas no tipo selecionado:
-
-1. **Grupo** — 4 opções em grade 2x2
-2. **Tipo** — lista dos tipos do grupo
-3. **OP + Operador** — teclado numérico (OP) + input de texto (nome)
-4. **Quantidade** — em peças ou ml conforme o tipo
-5. **Classificação** *(se o tipo exigir)* — Perda / Retrabalho + tempo inline se Retrabalho
-6. **Tempo** *(se o tipo exigir sempre)* — step separado
-7. **Confirmar** — revisão + botão salvar
-
----
-
-## Dashboard (app/dashboard/page.tsx)
-
-- Filtros: **Hoje / Semana / Mês / Personalizado** (padrão: Semana)
-- Cards de resumo com borda colorida lateral (estilo MSB)
-- Charts:
-  - Evolução no tempo (linha)
-  - Apontamentos por grupo (barras)
-  - Pareto: número de perdas por tipo
-  - Pareto: número de retrabalhos por tipo
-  - Pareto: tempo de retrabalho por tipo (minutos)
-
----
-
-## Navegação (Navegacao.tsx)
-
-- Header com **3 colunas**: logo/título | tabs centralizados | data/hora
-- Tabs: **📋 Apontamento** | **📈 CEP** | **📊 Dashboard**
-- Relógio atualiza a cada minuto em tempo real
-- Logo MSB no canto esquerdo
-
----
-
 ## Decisões técnicas importantes
 
 ### Server vs Client fetch no Next.js
 - **NUNCA** chame server actions (`'use server'`) a partir de `useEffect` em client components
-- Para leituras em client components, use diretamente o cliente Supabase: `supabase.from(...).select(...)`
-- Server actions são usadas apenas para escrita (INSERT, UPDATE)
+- Para leituras em client components: `supabase.from(...).select(...)` diretamente
+- Server actions são apenas para escrita (INSERT, UPDATE)
 
 ### Error boundaries no React
 - Handlers assíncronos em client components **NUNCA** devem relançar erros (`throw e`)
-- Capturar silenciosamente e exibir mensagem de erro via estado local
-- Re-throws causam o erro "An error occurred in the Server Components render"
+- Capturar silenciosamente + exibir via estado local
+- Re-throws causam "An error occurred in the Server Components render"
+
+### CEP — aba preservada com CSS hidden
+- `{abaHome === 'cartas' && <CartasControle />}` foi substituído por `<div className={hidden}>`
+- Componente fica montado ao trocar de aba → CTQ selecionado e timer de refresh persistem
 
 ### EtapaIndicador
-- Label da etapa atual fica **abaixo** da barra de bolinhas (flex-col), não ao lado
-- Resolve overflow com labels longos como "OP / Operador"
-
-### TecladoNumerico
-- Placeholder exibido em `text-lg` font-normal
-- Valor digitado em `text-4xl` monospace
-- Container com `overflow-hidden` para evitar transbordamento
+- Label abaixo da barra de bolinhas (flex-col) — evita overflow com labels longos
 
 ---
 
 ## Deploy
 
-- App publicado na **Vercel** com deploy automático a cada `git push`
-- Variáveis de ambiente configuradas na Vercel:
+- **Vercel** — deploy automático a cada `git push`
+- Variáveis configuradas na Vercel:
   - `NEXT_PUBLIC_SUPABASE_URL=https://nogmekfeerhfuobxjmkv.supabase.co`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...`
 
 ---
 
-## Próximos passos planejados (não implementados)
+## Como rodar / fazer deploy
 
-1. **⚠️ URGENTE: Executar migration_cep.sql** no Supabase SQL Editor para criar a tabela `cep_coletas`
-2. **Auto-refresh no dashboard** — atualizar automaticamente a cada 30s/1min para TV na produção
-3. **Tela de histórico** — listar, filtrar e conferir apontamentos e coletas CEP passados
-4. **Autenticação** — login com Supabase Auth para proteger o sistema
-5. **Exportação** — relatório em Excel ou PDF
-6. **Campo observação** — existe no banco, não está no formulário de apontamento ainda
-7. **Bug a investigar** — botões não avançam no browser de colegas via rede local (CSS funciona, JS não — possível problema de hidratação do Next.js em acesso via IP)
-8. **Carta p com índice de capabilidade** — quando % máximo de NOK for definido como especificação
-9. **Western Electric Rules** — detecção de padrões OOC avançados nas cartas de controle
+```powershell
+# Dev local
+cd "C:\Users\felipe.pereira\Documents\kaizen-fibra"
+npm run dev
+
+# Dev acessível na rede local (para mostrar para alguém sem subir pro Vercel)
+npm run dev -- --hostname 0.0.0.0
+# → http://192.168.0.103:3000
+
+# Deploy
+git add .
+git commit -m "descrição"
+git push   # Vercel publica em ~2 minutos
+```
 
 ---
 
-## Como rodar localmente
+## Próximos passos planejados (não implementados)
 
-```powershell
-cd "C:\Users\felipe.pereira\Documents\kaizen-fibra"
-npm run dev
-# Acesse http://localhost:3000
-```
-
-## Como fazer deploy
-
-```powershell
-cd "C:\Users\felipe.pereira\Documents\kaizen-fibra"
-git add .
-git commit -m "descrição"
-git push
-# Vercel faz deploy automático em ~2 minutos
-```
-
-## Variáveis de ambiente (.env.local — NÃO está no git)
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://nogmekfeerhfuobxjmkv.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
+1. **Auto-refresh no dashboard** — atualizar a cada 30s/1min para TV na produção
+2. **Tela de histórico** — listar e filtrar apontamentos e coletas CEP passados
+3. **Autenticação** — login com Supabase Auth
+4. **Exportação** — relatório em Excel ou PDF
+5. **Campo observação** — existe no banco, não está no formulário de apontamento
+6. **Bug a investigar** — botões não avançam no browser de colegas via rede local (JS não dispara via IP — possível problema de hidratação Next.js)
+7. **Carta p com índice de capabilidade** — quando % máximo de NOK for definido como especificação
+8. **Western Electric Rules** — detecção de padrões OOC avançados
+9. **Reativar aba CEP na navegação** — quando o módulo estiver pronto para produção (só descomentar o `<Link>` em `Navegacao.tsx`)

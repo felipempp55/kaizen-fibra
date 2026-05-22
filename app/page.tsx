@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import FormularioApontamento from '@/components/FormularioApontamento'
 import { salvarApontamento } from './actions'
-import type { NovoApontamento } from '@/lib/types'
+import type { NovoApontamento, TipoFibra } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
 import TecladoNumerico from '@/components/TecladoNumerico'
 
@@ -11,6 +11,7 @@ const STORAGE_KEY = 'kaizen-ops-abertas'
 
 interface OP {
   numero: string
+  fibra: TipoFibra
 }
 
 function carregarDoStorage(): { ops: OP[]; opAtiva: OP | null } {
@@ -18,7 +19,14 @@ function carregarDoStorage(): { ops: OP[]; opAtiva: OP | null } {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { ops: [], opAtiva: null }
     const parsed = JSON.parse(raw)
-    const ops: OP[] = Array.isArray(parsed?.ops) ? parsed.ops : []
+    // Filtra OPs que tenham todos os campos obrigatórios (migração segura)
+    const ops: OP[] = (Array.isArray(parsed?.ops) ? parsed.ops : [])
+      .filter((o: unknown) =>
+        o !== null &&
+        typeof o === 'object' &&
+        typeof (o as Record<string, unknown>).numero === 'string' &&
+        ((o as Record<string, unknown>).fibra === 'F272' || (o as Record<string, unknown>).fibra === 'F365')
+      )
     if (ops.length === 0) return { ops: [], opAtiva: null }
     const savedAtiva: OP | null = parsed?.opAtiva ?? null
     const opAtiva = savedAtiva && ops.some(o => o.numero === savedAtiva.numero)
@@ -36,6 +44,7 @@ export default function Home() {
   const [carregando, setCarregando] = useState(true)
   const [abrindoNovaOp, setAbrindoNovaOp] = useState(false)
   const [novoNumeroOP, setNovoNumeroOP] = useState('')
+  const [novaFibra, setNovaFibra] = useState<TipoFibra | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [formKey, setFormKey] = useState(0)
 
@@ -64,17 +73,19 @@ export default function Home() {
   }, [ops, opAtiva])
 
   function podeSalvarOp() {
-    return novoNumeroOP.trim().length > 0
+    return novoNumeroOP.trim().length > 0 && novaFibra !== null
   }
 
   function confirmarNovaOp() {
-    if (!podeSalvarOp()) return
+    if (!podeSalvarOp() || !novaFibra) return
     const nova: OP = {
       numero: novoNumeroOP.trim().toUpperCase(),
+      fibra: novaFibra,
     }
     setOps(prev => [...prev.filter(o => o.numero !== nova.numero), nova])
     setOpAtiva(nova)
     setNovoNumeroOP('')
+    setNovaFibra(null)
     setAbrindoNovaOp(false)
     setFormKey(k => k + 1)
   }
@@ -142,7 +153,7 @@ export default function Home() {
         <main className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full flex flex-col gap-4 mt-4">
           {abrindoNovaOp && (
             <button
-              onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP('') }}
+              onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP(''); setNovaFibra(null) }}
               className="text-[#8FA3B0] text-sm self-start flex items-center gap-1 hover:text-[#1A3344] transition-colors"
             >
               ← Cancelar
@@ -156,7 +167,7 @@ export default function Home() {
                 {abrindoNovaOp ? 'Nova Ordem de Produção' : 'Abrir Ordem de Produção'}
               </h2>
               <p className="text-[#8FA3B0] text-sm mt-1">
-                Informe a OP e o operador para começar os apontamentos
+                Informe o número da OP para começar os apontamentos
               </p>
             </div>
 
@@ -168,6 +179,27 @@ export default function Home() {
               maxLength={9}
               onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }}
             />
+
+            {/* Seleção de tipo de fibra */}
+            <div className="flex flex-col gap-3">
+              <p className="text-[#1A3344] text-base font-semibold text-center">Tipo de Fibra</p>
+              <div className="grid grid-cols-2 gap-3">
+                {(['F272', 'F365'] as TipoFibra[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setNovaFibra(f)}
+                    className={`py-5 rounded-xl border-2 font-bold text-lg transition-all active:scale-95 ${
+                      novaFibra === f
+                        ? 'bg-[#1E9FAC] border-[#1E9FAC] text-white shadow-md'
+                        : 'bg-white border-[#DDE4EA] text-[#1A3344] hover:border-[#1E9FAC]'
+                    }`}
+                  >
+                    Fibra {f === 'F272' ? '272' : '365'}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <button
               onClick={confirmarNovaOp}
@@ -194,13 +226,20 @@ export default function Home() {
           <div key={op.numero} className="flex items-center gap-0.5">
             <button
               onClick={() => selecionarOp(op)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all active:scale-95 ${
+              className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all active:scale-95 flex items-center gap-1.5 ${
                 opAtiva?.numero === op.numero
                   ? 'bg-[#1E9FAC] text-white'
                   : 'bg-[#F2F5F7] text-[#1A3344] hover:bg-[#E6F6F8] border border-[#DDE4EA]'
               }`}
             >
               {op.numero}
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                opAtiva?.numero === op.numero
+                  ? 'bg-white/20 text-white'
+                  : 'bg-[#DDE4EA] text-[#3D5568]'
+              }`}>
+                {op.fibra === 'F272' ? '272' : '365'}
+              </span>
             </button>
             <button
               onClick={() => solicitarFechamentoOp(op.numero)}
@@ -230,6 +269,7 @@ export default function Home() {
             <FormularioApontamento
               key={formKey}
               op={opAtiva.numero}
+              fibra={opAtiva.fibra}
               operador=""
               onSalvar={handleSalvar}
             />

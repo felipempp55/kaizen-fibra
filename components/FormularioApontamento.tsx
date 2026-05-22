@@ -34,7 +34,8 @@ function formatMs(ms: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 import { GRUPOS_DESPERDICIO } from '@/lib/desperdicios'
-import type { Classificacao, NovoApontamento, TipoDesperdicio } from '@/lib/types'
+import type { Classificacao, NovoApontamento, TipoDesperdicio, TipoFibra } from '@/lib/types'
+import { calcularPerdaMateriais, calcularCustoTotal, formatarReal } from '@/lib/materiais'
 import EtapaIndicador from './EtapaIndicador'
 import BotaoGrande from './BotaoGrande'
 import TecladoNumerico from './TecladoNumerico'
@@ -72,11 +73,12 @@ const CLASSIFICACOES: { valor: Classificacao; label: string; cor: string }[] = [
 
 interface Props {
   op: string
+  fibra: TipoFibra
   operador: string
   onSalvar: (dados: NovoApontamento) => Promise<void>
 }
 
-export default function FormularioApontamento({ op, operador, onSalvar }: Props) {
+export default function FormularioApontamento({ op, fibra, operador, onSalvar }: Props) {
   // ── Cronômetro ──────────────────────────────────────────────────────────────
   const [timer, setTimer] = useState<TimerState>(TIMER_INICIAL)
   const [agora, setAgora] = useState(Date.now())
@@ -158,6 +160,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         tipo_desperdicio: tipoSelecionado.nome,
         nome_operador: operadoraSelecionada ?? operador,
         numero_op: op.toUpperCase(),
+        fibra,
         quantidade_pecas: tipoSelecionado.unidade === 'pecas' ? parseInt(quantidade) : null,
         quantidade_ml: tipoSelecionado.unidade === 'ml'
           ? parseFloat(quantidade.replace(',', '.'))
@@ -547,33 +550,74 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
       )}
 
       {/* Confirmar */}
-      {etapaAtual === 'confirmar' && (
-        <div className="flex flex-col gap-4">
-          <h3 className="text-xl font-bold text-center text-[#1A3344] mb-2">Confirmar apontamento</h3>
-          <div className="bg-white border border-[#DDE4EA] rounded-xl p-5 flex flex-col gap-3 text-base">
-            <Linha label="OP" valor={op} />
-            <Linha label="Operadora" valor={operadoraSelecionada ?? ''} />
-            <Linha label="Grupo" valor={grupoSelecionado ?? ''} />
-            <Linha label="Tipo" valor={tipoSelecionado?.nome ?? ''} />
-            <Linha label={labelQtdPrincipal} valor={quantidade} />
-            {tipoSelecionado?.segunda_quantidade && segundaQuantidade && (
-              <Linha label={tipoSelecionado.segunda_quantidade.label} valor={segundaQuantidade} />
+      {etapaAtual === 'confirmar' && (() => {
+        // Calcula materiais perdidos para exibição no resumo
+        const qPecas = tipoSelecionado?.unidade === 'pecas' ? parseInt(quantidade || '0') : null
+        const qMl = tipoSelecionado?.unidade === 'ml'
+          ? parseFloat(quantidade.replace(',', '.') || '0')
+          : (tipoSelecionado?.segunda_quantidade ? parseInt(segundaQuantidade || '0') : null)
+        const itensPerdidos = tipoSelecionado
+          ? calcularPerdaMateriais(tipoSelecionado.nome, fibra, qPecas, qMl)
+          : []
+        const custoTotal = calcularCustoTotal(itensPerdidos)
+
+        return (
+          <div className="flex flex-col gap-4">
+            <h3 className="text-xl font-bold text-center text-[#1A3344] mb-2">Confirmar apontamento</h3>
+
+            {/* Dados do apontamento */}
+            <div className="bg-white border border-[#DDE4EA] rounded-xl p-5 flex flex-col gap-3 text-base">
+              <Linha label="OP" valor={`${op} · Fibra ${fibra === 'F272' ? '272' : '365'}`} />
+              <Linha label="Operadora" valor={operadoraSelecionada ?? ''} />
+              <Linha label="Grupo" valor={grupoSelecionado ?? ''} />
+              <Linha label="Tipo" valor={tipoSelecionado?.nome ?? ''} />
+              <Linha label={labelQtdPrincipal} valor={quantidade} />
+              {tipoSelecionado?.segunda_quantidade && (tipoSelecionado.input === 'contador_duplo' || segundaQuantidade) && (
+                <Linha label={tipoSelecionado.segunda_quantidade.label} valor={segundaQuantidade || '0'} />
+              )}
+              {tipoSelecionado?.classificacao_fixa && (
+                <Linha label="Classificação" valor={tipoSelecionado.classificacao_fixa.toUpperCase()} />
+              )}
+              {classificacao && <Linha label="Classificação" valor={classificacao.toUpperCase()} />}
+              {tempoMinutos && <Linha label="Tempo" valor={`${tempoMinutos} min`} />}
+            </div>
+
+            {/* Materiais afetados */}
+            {itensPerdidos.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex flex-col gap-2">
+                <p className="text-red-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📦</span> Materiais consumidos neste apontamento
+                </p>
+                <div className="flex flex-col gap-1.5 mt-1">
+                  {itensPerdidos.map((item) => (
+                    <div key={item.material.codigo} className="flex items-center justify-between text-sm">
+                      <span className="text-[#1A3344] font-medium">
+                        {item.material.nome}
+                        <span className="text-[#8FA3B0] font-normal ml-1">× {item.quantidade}</span>
+                      </span>
+                      <span className="text-red-600 font-semibold tabular-nums">
+                        {formatarReal(item.material.custo * item.quantidade)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-red-200 pt-2 mt-1 flex justify-between items-center">
+                  <span className="text-red-700 text-sm font-bold">Total estimado</span>
+                  <span className="text-red-700 text-lg font-black tabular-nums">{formatarReal(custoTotal)}</span>
+                </div>
+              </div>
             )}
-            {tipoSelecionado?.classificacao_fixa && (
-              <Linha label="Classificação" valor={tipoSelecionado.classificacao_fixa.toUpperCase()} />
-            )}
-            {classificacao && <Linha label="Classificação" valor={classificacao.toUpperCase()} />}
-            {tempoMinutos && <Linha label="Tempo" valor={`${tempoMinutos} min`} />}
+
+            <button
+              onClick={confirmar}
+              disabled={salvando}
+              className="bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 disabled:opacity-50 text-white font-bold text-2xl py-6 rounded-xl transition-all mt-2"
+            >
+              {salvando ? 'Salvando…' : '✓ Salvar'}
+            </button>
           </div>
-          <button
-            onClick={confirmar}
-            disabled={salvando}
-            className="bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 disabled:opacity-50 text-white font-bold text-2xl py-6 rounded-xl transition-all mt-2"
-          >
-            {salvando ? 'Salvando…' : '✓ Salvar'}
-          </button>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Navegação — oculta no contador_duplo (tem navegação própria embutida) */}
       <div className={`flex gap-3 mt-2 ${etapaAtual === 'quantidade' && tipoSelecionado?.input === 'contador_duplo' ? 'hidden' : ''}`}>

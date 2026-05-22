@@ -2,6 +2,7 @@ export type Classificacao = 'perda' | 'retrabalho'
 export type UnidadeMedida = 'pecas' | 'ml'
 export type OpcaoClassificacao = 'perda_retrabalho' | 'nenhum'
 export type OpcaoTempo = 'sempre' | 'nunca' | 'se_retrabalho'
+export type TipoFibra = 'F272' | 'F365'
 
 export type OpcaoInput = 'teclado' | 'contador' | 'contador_duplo'
 
@@ -34,6 +35,7 @@ export interface Apontamento {
   tipo_desperdicio: string
   nome_operador: string
   numero_op: string
+  fibra: TipoFibra | null
   quantidade_pecas: number | null
   quantidade_ml: number | null
   classificacao: Classificacao | null
@@ -46,6 +48,7 @@ export interface NovoApontamento {
   tipo_desperdicio: string
   nome_operador: string
   numero_op: string
+  fibra: TipoFibra | null
   quantidade_pecas: number | null
   quantidade_ml: number | null
   classificacao: Classificacao | null
