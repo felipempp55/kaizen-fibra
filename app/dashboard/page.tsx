@@ -374,7 +374,6 @@ export default function DashboardPage() {
 
     // ── Métricas de qualidade ──────────────────────────────────────────────
     const taxaRefugo    = totalPecas > 0 ? (pecasPerdidas / totalPecas) * 100 : 0
-    const conformidade  = 100 - taxaRefugo
 
     // ── Mapa de defeitos — dados de hoje ──────────────────────────────────
     const hojeStr      = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
@@ -415,7 +414,7 @@ export default function DashboardPage() {
       porOperadora, porOperadoraCusto, fibraGrupo, porMaterial,
       topOPs, ultimosReg, custoDiaMedio, projecaoMensal, taxaImpacto,
       porTurno, sparkApontamentos, sparkPecas, sparkCusto,
-      taxaRefugo, conformidade, mapaDefeitos, tendenciaRefugo,
+      taxaRefugo, mapaDefeitos, tendenciaRefugo,
       projecaoAnual,
     }
   }, [dados])
@@ -782,7 +781,7 @@ export default function DashboardPage() {
         {aba === 'qualidade' && (
           <>
             {/* ── KPI Cards ────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-2 gap-3">
               <KPICard
                 label="Taxa de Refugo"
                 valor={dp.taxaRefugo.toFixed(2)}
@@ -796,13 +795,6 @@ export default function DashboardPage() {
                 unidade="pç"
                 sparkData={dp.sparkPecas}
                 cor="var(--signal-red)"
-              />
-              <KPICard
-                label="Conformidade"
-                valor={dp.conformidade.toFixed(2)}
-                unidade="%"
-                sparkData={dp.sparkApontamentos.map(v => 100 - (v > 0 ? v * 0.5 : 0))}
-                cor="var(--signal-green)"
               />
             </div>
 
