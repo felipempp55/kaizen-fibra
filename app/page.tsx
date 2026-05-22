@@ -19,7 +19,6 @@ function carregarDoStorage(): { ops: OP[]; opAtiva: OP | null } {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { ops: [], opAtiva: null }
     const parsed = JSON.parse(raw)
-    // Filtra OPs que tenham todos os campos obrigatórios (migração segura)
     const ops: OP[] = (Array.isArray(parsed?.ops) ? parsed.ops : [])
       .filter((o: unknown) =>
         o !== null &&
@@ -48,17 +47,14 @@ export default function Home() {
   const [erro, setErro] = useState<string | null>(null)
   const [formKey, setFormKey] = useState(0)
 
-  // Modal de confirmação para encerrar OP
   const [modalFecharOp, setModalFecharOp] = useState<string | null>(null)
   const [authLogin, setAuthLogin] = useState('')
   const [authSenha, setAuthSenha] = useState('')
   const [authErro, setAuthErro] = useState(false)
   const [processando, setProcessando] = useState(false)
 
-  // Evita gravar no localStorage antes de ter carregado
   const persistindoAtivo = useRef(false)
 
-  // ── Carregar OPs do localStorage ao montar ───────────────────────────────────
   useEffect(() => {
     const { ops: savedOps, opAtiva: savedAtiva } = carregarDoStorage()
     setOps(savedOps)
@@ -67,7 +63,6 @@ export default function Home() {
     persistindoAtivo.current = true
   }, [])
 
-  // ── Salvar OPs no localStorage sempre que mudar ──────────────────────────────
   useEffect(() => {
     if (!persistindoAtivo.current) return
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ops, opAtiva }))
@@ -79,10 +74,7 @@ export default function Home() {
 
   function confirmarNovaOp() {
     if (!podeSalvarOp() || !novaFibra) return
-    const nova: OP = {
-      numero: novoNumeroOP.trim().toUpperCase(),
-      fibra: novaFibra,
-    }
+    const nova: OP = { numero: novoNumeroOP.trim().toUpperCase(), fibra: novaFibra }
     setOps(prev => [...prev.filter(o => o.numero !== nova.numero), nova])
     setOpAtiva(nova)
     setNovoNumeroOP('')
@@ -100,15 +92,10 @@ export default function Home() {
 
   function verificarCredenciais(): boolean {
     const login = authLogin.trim().toLowerCase()
-    const senha = authSenha
     const valido =
-      (login === 'qualidade' && senha === 'pareto') ||
-      (login === 'janete'    && senha === 'fibra')
-    if (!valido) {
-      setAuthErro(true)
-      setAuthSenha('')
-      return false
-    }
+      (login === 'qualidade' && authSenha === 'pareto') ||
+      (login === 'janete'    && authSenha === 'fibra')
+    if (!valido) { setAuthErro(true); setAuthSenha(''); return false }
     return true
   }
 
@@ -122,13 +109,11 @@ export default function Home() {
     setModalFecharOp(null)
   }
 
-  // Finalizar: mantém dados no banco, só remove a OP da tela
   function finalizarOP() {
     if (!verificarCredenciais()) return
     removerOpLocal(modalFecharOp!)
   }
 
-  // Cancelar: apaga todos os apontamentos da OP no banco + remove da tela
   async function handleCancelarOP() {
     if (!verificarCredenciais()) return
     const numero = modalFecharOp!
@@ -138,7 +123,6 @@ export default function Home() {
       removerOpLocal(numero)
     } catch {
       setAuthErro(false)
-      // mantém modal aberto para o usuário tentar novamente
     } finally {
       setProcessando(false)
     }
@@ -172,34 +156,48 @@ export default function Home() {
     }
   }
 
-  // ── Loading: evita flash de tela errada antes de carregar o localStorage ─────
   if (carregando) {
-    return <div className="min-h-screen bg-[#F2F5F7]" />
+    return <div className="min-h-screen" style={{ background: 'var(--bg-page)' }} />
   }
 
-  // ── Tela: abrir OP ──────────────────────────────────────────────────────────
+  // ── Tela: abrir OP ─────────────────────────────────────────────────────────
   if (ops.length === 0 || abrindoNovaOp) {
     return (
-      <div className="min-h-screen bg-[#F2F5F7] flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-page)' }}>
         <Navegacao />
 
         <main className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full flex flex-col gap-4 mt-4">
           {abrindoNovaOp && (
             <button
               onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP(''); setNovaFibra(null) }}
-              className="text-[#8FA3B0] text-sm self-start flex items-center gap-1 hover:text-[#1A3344] transition-colors"
+              className="text-sm self-start flex items-center gap-1 transition-colors"
+              style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}
             >
               ← Cancelar
             </button>
           )}
 
-          <div className="bg-white border border-[#DDE4EA] rounded-2xl p-6 shadow-sm flex flex-col gap-6">
+          <div
+            className="rounded-2xl p-6 flex flex-col gap-6"
+            style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 1px 4px rgba(31,55,68,0.06)' }}
+          >
+            {/* Ícone + título */}
             <div className="text-center">
-              <div className="text-5xl mb-3">🏭</div>
-              <h2 className="text-xl font-bold text-[#1A3344]">
+              <div
+                className="w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center"
+                style={{ background: 'var(--brand-primary-soft)' }}
+              >
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 20V11l5 3V11l5 3V7l8 5v8H3z" />
+                </svg>
+              </div>
+              <h2
+                className="text-xl font-extrabold"
+                style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+              >
                 {abrindoNovaOp ? 'Nova Ordem de Produção' : 'Abrir Ordem de Produção'}
               </h2>
-              <p className="text-[#8FA3B0] text-sm mt-1">
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                 Informe o número da OP para começar os apontamentos
               </p>
             </div>
@@ -213,20 +211,28 @@ export default function Home() {
               onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }}
             />
 
-            {/* Seleção de tipo de fibra */}
+            {/* Tipo de fibra */}
             <div className="flex flex-col gap-3">
-              <p className="text-[#1A3344] text-base font-semibold text-center">Tipo de Fibra</p>
+              <p
+                className="text-sm font-semibold text-center"
+                style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}
+              >
+                Tipo de Fibra
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 {(['F272', 'F365'] as TipoFibra[]).map((f) => (
                   <button
                     key={f}
                     type="button"
                     onClick={() => setNovaFibra(f)}
-                    className={`py-5 rounded-xl border-2 font-bold text-lg transition-all active:scale-95 ${
-                      novaFibra === f
-                        ? 'bg-[#1E9FAC] border-[#1E9FAC] text-white shadow-md'
-                        : 'bg-white border-[#DDE4EA] text-[#1A3344] hover:border-[#1E9FAC]'
-                    }`}
+                    className="py-5 rounded-xl font-bold text-lg transition-all active:scale-[0.97]"
+                    style={{
+                      background: novaFibra === f ? 'var(--brand-primary)' : '#fff',
+                      color: novaFibra === f ? '#fff' : 'var(--text-strong)',
+                      border: `2px solid ${novaFibra === f ? 'var(--brand-primary)' : 'var(--line)'}`,
+                      fontFamily: 'var(--font-display)',
+                      boxShadow: novaFibra === f ? '0 4px 14px rgba(86,164,187,0.3)' : 'none',
+                    }}
                   >
                     Fibra {f === 'F272' ? '272' : '365'}
                   </button>
@@ -237,7 +243,13 @@ export default function Home() {
             <button
               onClick={confirmarNovaOp}
               disabled={!podeSalvarOp()}
-              className="bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 disabled:opacity-40 text-white font-bold text-xl py-5 rounded-xl transition-all"
+              className="font-bold text-xl py-5 rounded-xl transition-all active:scale-[0.97] disabled:opacity-40"
+              style={{
+                background: 'var(--brand-primary)',
+                color: '#fff',
+                fontFamily: 'var(--font-display)',
+                boxShadow: podeSalvarOp() ? '0 4px 14px rgba(86,164,187,0.3)' : 'none',
+              }}
             >
               Iniciar Apontamentos →
             </button>
@@ -247,132 +259,252 @@ export default function Home() {
     )
   }
 
-  // ── Tela principal: com OP ativa ────────────────────────────────────────────
+  // ── Tela principal: com OP ativa ───────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F2F5F7] flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-page)' }}>
       <Navegacao onReset={voltarInicio} />
 
-      {/* Barra de OPs */}
-      <div className="bg-white border-b border-[#DDE4EA] px-4 py-2.5 flex items-center gap-2 flex-wrap shadow-sm">
-        <span className="text-[#8FA3B0] text-xs font-semibold shrink-0 uppercase tracking-wide">OP:</span>
+      {/* ── Barra de OPs ────────────────────────────────────────────── */}
+      <div
+        className="px-4 py-2.5 flex items-center gap-2 flex-wrap"
+        style={{ background: '#fff', borderBottom: '1px solid var(--line)', boxShadow: '0 1px 3px rgba(31,55,68,0.04)' }}
+      >
+        <span
+          className="text-[10px] font-bold uppercase tracking-widest shrink-0"
+          style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+        >
+          OP:
+        </span>
+
         {ops.map(op => (
           <div key={op.numero} className="flex items-center gap-0.5">
             <button
               onClick={() => selecionarOp(op)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all active:scale-95 flex items-center gap-1.5 ${
-                opAtiva?.numero === op.numero
-                  ? 'bg-[#1E9FAC] text-white'
-                  : 'bg-[#F2F5F7] text-[#1A3344] hover:bg-[#E6F6F8] border border-[#DDE4EA]'
-              }`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all active:scale-[0.97]"
+              style={{
+                background: opAtiva?.numero === op.numero ? 'var(--brand-primary)' : 'var(--bg-page)',
+                color: opAtiva?.numero === op.numero ? '#fff' : 'var(--text-strong)',
+                border: `1px solid ${opAtiva?.numero === op.numero ? 'var(--brand-primary)' : 'var(--line)'}`,
+                fontFamily: 'var(--font-mono)',
+              }}
             >
               {op.numero}
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                opAtiva?.numero === op.numero
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[#DDE4EA] text-[#3D5568]'
-              }`}>
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                style={{
+                  background: opAtiva?.numero === op.numero ? 'rgba(255,255,255,0.2)' : 'var(--line)',
+                  color: opAtiva?.numero === op.numero ? '#fff' : 'var(--text-muted)',
+                }}
+              >
                 {op.fibra === 'F272' ? '272' : '365'}
               </span>
             </button>
             <button
               onClick={() => solicitarFechamentoOp(op.numero)}
               title="Encerrar OP"
-              className="text-[#C4D0DA] hover:text-red-400 text-xs p-1.5 rounded transition-colors"
+              className="p-1.5 rounded transition-colors text-xs"
+              style={{ color: 'var(--line-strong)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--signal-red)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--line-strong)')}
             >
               ✕
             </button>
           </div>
         ))}
+
         <button
           onClick={() => setAbrindoNovaOp(true)}
-          className="px-3 py-1.5 rounded-lg text-sm font-semibold text-[#1E9FAC] border border-[#1E9FAC]/50 hover:bg-[#E6F6F8] active:scale-95 transition-all"
+          className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.97]"
+          style={{
+            color: 'var(--brand-primary)',
+            border: '1px solid rgba(86,164,187,0.4)',
+            background: 'transparent',
+            fontFamily: 'var(--font-display)',
+          }}
         >
           + Nova OP
         </button>
       </div>
 
+      {/* ── Conteúdo principal ─────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full">
         {erro && (
-          <div className="bg-red-50 border border-red-300 text-red-600 rounded-xl p-4 mb-4 text-sm">
-            ⚠️ {erro}
+          <div
+            className="rounded-xl p-4 mb-4 text-sm"
+            style={{
+              background: 'var(--signal-red-soft)',
+              border: '1px solid #f5d2d1',
+              color: 'var(--signal-red)',
+            }}
+          >
+            ⚠ {erro}
           </div>
         )}
-        <div className="bg-white border border-[#DDE4EA] rounded-2xl p-4 shadow-sm mt-2">
-          {opAtiva && (
-            <FormularioApontamento
-              key={formKey}
-              op={opAtiva.numero}
-              fibra={opAtiva.fibra}
-              operador=""
-              onSalvar={handleSalvar}
-            />
-          )}
-        </div>
+
+        {opAtiva && (
+          <div
+            className="rounded-2xl overflow-hidden mt-2"
+            style={{ border: '1px solid var(--line)', boxShadow: '0 1px 4px rgba(31,55,68,0.06)' }}
+          >
+            {/* Cabeçalho escuro da OP ativa */}
+            <div
+              className="px-5 py-4 relative overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, var(--brand-deep) 0%, var(--brand-deep-2) 100%)' }}
+            >
+              <svg
+                style={{ position: 'absolute', right: -30, top: -30, opacity: 0.06 }}
+                width="140" height="140" viewBox="0 0 140 140"
+              >
+                <circle cx="70" cy="70" r="68" stroke="#fff" strokeWidth="1" fill="none" />
+                <circle cx="70" cy="70" r="50" stroke="#fff" strokeWidth="1" fill="none" />
+                <circle cx="70" cy="70" r="32" stroke="#fff" strokeWidth="1" fill="none" />
+              </svg>
+
+              <div className="relative flex items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
+                      style={{ background: 'rgba(156,229,238,0.16)', color: 'var(--brand-tecno)', fontFamily: 'var(--font-mono)' }}
+                    >
+                      OP ATIVA
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-3">
+                    <span
+                      className="text-2xl font-bold text-white"
+                      style={{ fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}
+                    >
+                      {opAtiva.numero}
+                    </span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+                      Fibra{' '}
+                      <strong style={{ color: 'var(--brand-tecno)' }}>
+                        {opAtiva.fibra === 'F272' ? '272' : '365'}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Formulário */}
+            <div className="p-4" style={{ background: '#fff' }}>
+              <FormularioApontamento
+                key={formKey}
+                op={opAtiva.numero}
+                fibra={opAtiva.fibra}
+                operador=""
+                onSalvar={handleSalvar}
+              />
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Modal: autorização para encerrar OP */}
+      {/* ── Modal: autorização para encerrar OP ────────────────────── */}
       {modalFecharOp && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-6">
-            <div className="text-center">
-              <div className="text-4xl mb-2">🔒</div>
-              <h2 className="text-lg font-bold text-[#1A3344]">OP {modalFecharOp}</h2>
-              <p className="text-[#8FA3B0] text-sm mt-1">Informe as credenciais de qualidade para continuar</p>
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ background: 'rgba(31,55,68,0.55)', backdropFilter: 'blur(4px)' }}
+        >
+          <div
+            className="w-full max-w-sm flex flex-col gap-5 p-6 rounded-2xl"
+            style={{ background: '#fff', boxShadow: '0 30px 80px -10px rgba(15,35,50,0.4)' }}
+          >
+            <div className="flex justify-between items-start">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ background: 'var(--brand-primary-soft)' }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary-dark)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="11" width="14" height="10" rx="2" />
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  <circle cx="12" cy="16" r="1" fill="var(--brand-primary-dark)" stroke="none" />
+                </svg>
+              </div>
+              <button
+                onClick={fecharModal}
+                disabled={processando}
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors text-sm"
+                style={{ background: 'var(--bg-page)', color: 'var(--text-muted)' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div>
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest mb-1"
+                style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+              >
+                OP {modalFecharOp}
+              </p>
+              <h2
+                className="text-xl font-extrabold"
+                style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+              >
+                Autenticação de Qualidade
+              </h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                Para finalizar ou cancelar a OP, informe as credenciais.
+              </p>
             </div>
 
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-[#1A3344] text-sm font-semibold">Login</label>
-                <input
-                  type="text"
-                  value={authLogin}
-                  onChange={e => { setAuthLogin(e.target.value); setAuthErro(false) }}
-                  placeholder="login"
-                  autoFocus
-                  className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[#1A3344] text-sm font-semibold">Senha</label>
-                <input
-                  type="password"
-                  value={authSenha}
-                  onChange={e => { setAuthSenha(e.target.value); setAuthErro(false) }}
-                  placeholder="••••••"
-                  className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none"
-                />
-              </div>
+              <CampoAuth label="Login" value={authLogin} onChange={v => { setAuthLogin(v); setAuthErro(false) }} placeholder="qualidade" />
+              <CampoAuth label="Senha" type="password" value={authSenha} onChange={v => { setAuthSenha(v); setAuthErro(false) }} placeholder="••••••" />
               {authErro && (
-                <p className="text-red-500 text-sm text-center font-medium">Login ou senha incorretos</p>
+                <p className="text-sm text-center font-semibold" style={{ color: 'var(--signal-red)' }}>
+                  Login ou senha incorretos
+                </p>
               )}
             </div>
 
-            {/* Explicação das duas ações */}
-            <div className="bg-[#F2F5F7] rounded-xl p-3 flex flex-col gap-2 text-xs text-[#3D5568]">
-              <p><span className="font-bold text-[#1E9FAC]">Finalizar OP</span> — encerra a OP e mantém todos os dados registrados.</p>
-              <p><span className="font-bold text-red-500">Cancelar OP</span> — remove a OP e <span className="font-bold">apaga permanentemente</span> todos os apontamentos dela.</p>
+            <div className="rounded-xl p-3 text-xs flex flex-col gap-1.5" style={{ background: 'var(--bg-page)', color: 'var(--text-body)' }}>
+              <p>
+                <strong style={{ color: 'var(--brand-primary-dark)' }}>Finalizar OP</strong>
+                {' '}— encerra a OP e mantém todos os dados registrados.
+              </p>
+              <p>
+                <strong style={{ color: 'var(--signal-red)' }}>Cancelar OP</strong>
+                {' '}— remove a OP e <strong>apaga permanentemente</strong> todos os apontamentos dela.
+              </p>
             </div>
 
-            {/* Botões de ação */}
             <div className="flex flex-col gap-2">
               <button
                 onClick={finalizarOP}
                 disabled={processando}
-                className="w-full bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 disabled:opacity-40 text-white font-bold py-3.5 rounded-xl transition-all"
+                className="w-full font-bold py-3.5 rounded-xl transition-all active:scale-[0.97] disabled:opacity-40 flex items-center justify-center gap-2"
+                style={{ background: 'var(--brand-primary)', color: '#fff', fontFamily: 'var(--font-display)' }}
               >
-                ✓ Finalizar OP
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4.5 4.5L19 7" /></svg>
+                Finalizar OP
               </button>
               <button
                 onClick={handleCancelarOP}
                 disabled={processando}
-                className="w-full bg-red-500 hover:bg-red-600 active:scale-95 disabled:opacity-40 text-white font-bold py-3.5 rounded-xl transition-all"
+                className="w-full font-bold py-3.5 rounded-xl transition-all active:scale-[0.97] disabled:opacity-40"
+                style={{
+                  background: 'transparent',
+                  color: 'var(--signal-red)',
+                  border: '1px solid rgba(200,80,79,0.35)',
+                  fontFamily: 'var(--font-display)',
+                }}
               >
-                {processando ? 'Cancelando…' : '🗑️ Cancelar OP (apagar dados)'}
+                {processando ? 'Cancelando…' : 'Cancelar OP (apagar dados)'}
               </button>
               <button
                 onClick={fecharModal}
                 disabled={processando}
-                className="w-full bg-white border border-[#DDE4EA] hover:border-[#1E9FAC] text-[#3D5568] font-semibold py-3 rounded-xl transition-all active:scale-95"
+                className="w-full font-semibold py-3 rounded-xl transition-all active:scale-[0.97]"
+                style={{
+                  background: '#fff',
+                  color: 'var(--text-body)',
+                  border: '1px solid var(--line)',
+                  fontFamily: 'var(--font-display)',
+                }}
               >
                 Voltar
               </button>
@@ -380,6 +512,41 @@ export default function Home() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function CampoAuth({
+  label, value, onChange, placeholder, type = 'text',
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; type?: string;
+}) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        className="text-sm font-semibold"
+        style={{ color: 'var(--text-body)', fontFamily: 'var(--font-display)' }}
+      >
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        className="w-full h-12 px-3.5 rounded-xl text-base outline-none"
+        style={{
+          background: '#fff',
+          border: focused ? '2px solid var(--brand-primary)' : '1.5px solid var(--line)',
+          color: 'var(--text-strong)',
+          fontFamily: 'var(--font-body)',
+          transition: 'border-color 150ms ease',
+        }}
+      />
     </div>
   )
 }

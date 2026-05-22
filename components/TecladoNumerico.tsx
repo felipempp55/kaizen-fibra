@@ -35,9 +35,7 @@ export default function TecladoNumerico({
     if (tecla === 'C')  { onChange('');                 inputRef.current?.focus(); return }
 
     if (tecla === ',') {
-      // Só uma vírgula por vez
       if (valor.includes(',')) { inputRef.current?.focus(); return }
-      // Vírgula no início → prefixar com 0
       const novo = (valor === '' ? '0' : valor) + ','
       onChange(novo)
       inputRef.current?.focus()
@@ -51,15 +49,20 @@ export default function TecladoNumerico({
     inputRef.current?.focus()
   }
 
-  // Layout: com decimal troca 'C' por ',' e mantém '⌫'
   const teclas = decimal
     ? ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫']
     : ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫']
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <label className="text-[#1A3344] text-base font-semibold text-center">{label}</label>
+      <label
+        className="text-base font-semibold text-center"
+        style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}
+      >
+        {label}
+      </label>
 
+      {/* Input oculto para teclado físico */}
       <input
         ref={inputRef}
         type="text"
@@ -87,32 +90,72 @@ export default function TecladoNumerico({
 
       {/* Visor */}
       <div
-        className="bg-white border-2 border-[#DDE4EA] rounded-xl w-full py-4 px-4 text-center text-4xl font-mono font-bold text-[#1A3344] min-h-[72px] flex items-center justify-center tracking-widest overflow-hidden cursor-text select-none"
+        className="w-full min-h-[72px] rounded-xl flex items-center justify-center cursor-text select-none overflow-hidden"
+        style={{
+          background: '#fff',
+          border: '2px solid var(--line)',
+          boxShadow: '0 1px 3px rgba(31,55,68,0.06)',
+        }}
         onClick={() => inputRef.current?.focus()}
       >
-        {valor
-          ? <span className="truncate">{valor}</span>
-          : <span className="text-[#DDE4EA] text-lg font-sans font-normal tracking-normal">{placeholder ?? '—'}</span>
-        }
+        {valor ? (
+          <span
+            className="text-4xl font-bold tracking-widest truncate px-4"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-strong)' }}
+          >
+            {valor}
+          </span>
+        ) : (
+          <span
+            className="text-base font-normal"
+            style={{ color: 'var(--text-faint)', fontFamily: 'var(--font-body)' }}
+          >
+            {placeholder ?? '—'}
+          </span>
+        )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3 w-full">
-        {teclas.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => pressionar(t)}
-            className={`
-              h-16 rounded-xl text-2xl font-bold transition-all active:scale-95 border
-              ${t === 'C'  ? 'bg-red-500 hover:bg-red-600 text-white border-transparent' : ''}
-              ${t === '⌫'  ? 'bg-[#DDE4EA] hover:bg-[#c8d3db] text-[#3D5568] border-transparent' : ''}
-              ${t === ','  ? 'bg-[#F2F5F7] hover:bg-[#E6F6F8] hover:border-[#1E9FAC] text-[#1A3344] border-[#DDE4EA] text-3xl' : ''}
-              ${t !== 'C' && t !== '⌫' && t !== ',' ? 'bg-white hover:bg-[#E6F6F8] hover:border-[#1E9FAC] text-[#1A3344] border-[#DDE4EA]' : ''}
-            `}
-          >
-            {t}
-          </button>
-        ))}
+      {/* Grade de teclas */}
+      <div className="grid grid-cols-3 gap-2.5 w-full">
+        {teclas.map((t) => {
+          const isClear = t === 'C'
+          const isDel   = t === '⌫'
+          const isComma = t === ','
+
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => pressionar(t)}
+              className="h-16 rounded-xl transition-all active:scale-[0.96] select-none flex items-center justify-center"
+              style={{
+                background: isClear
+                  ? 'var(--signal-red-soft)'
+                  : isDel
+                    ? 'var(--brand-soft)'
+                    : '#fff',
+                color: isClear
+                  ? 'var(--signal-red)'
+                  : isDel
+                    ? 'var(--text-body)'
+                    : 'var(--text-strong)',
+                border: '1px solid var(--line)',
+                fontFamily: (isComma || isDel) ? 'var(--font-body)' : 'var(--font-mono)',
+                fontSize: isDel ? 14 : 22,
+                fontWeight: 700,
+                boxShadow: '0 1px 0 rgba(0,0,0,0.02)',
+              }}
+            >
+              {isDel ? (
+                // Backspace SVG
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 6H10l-6 6 6 6h12V6z" />
+                  <path d="M14 10l5 5M19 10l-5 5" />
+                </svg>
+              ) : t}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

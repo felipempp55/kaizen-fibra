@@ -27,15 +27,15 @@ interface ApontamentoRico extends Apontamento {
 
 const CORES_GRUPO: Record<string, string> = {
   'Epóxi': '#8b5cf6',
-  'Polimento': '#1E9FAC',
+  'Polimento': '#56A4BB',
   'Problemas Dimensionais': '#f97316',
   'Clivagem': '#ef4444',
 }
 
-const PALETA = ['#1E9FAC', '#ef4444', '#eab308', '#8b5cf6', '#f97316', '#06b6d4', '#10b981', '#f43f5e']
+const PALETA = ['#56A4BB', '#ef4444', '#eab308', '#8b5cf6', '#f97316', '#06b6d4', '#10b981', '#f43f5e']
 
 const TT = {
-  contentStyle: { backgroundColor: '#1A3344', border: '1px solid #1E9FAC', borderRadius: 8, fontSize: 12 },
+  contentStyle: { backgroundColor: '#1F3744', border: '1px solid #56A4BB', borderRadius: 8, fontSize: 12 },
   labelStyle: { color: '#ffffff', fontWeight: 700 },
   itemStyle: { color: '#b3d4e0' },
 }
@@ -89,19 +89,41 @@ function LoginDashboard({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F2F5F7] flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-page)' }}>
       <Navegacao />
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="bg-white border border-[#DDE4EA] rounded-2xl shadow-sm w-full max-w-sm flex flex-col gap-6 p-8">
+        <div
+          className="w-full max-w-sm flex flex-col gap-6 p-8 rounded-2xl"
+          style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 1px 4px rgba(31,55,68,0.06)' }}
+        >
           <div className="text-center">
-            <div className="text-5xl mb-3">📊</div>
-            <h2 className="text-xl font-bold text-[#1A3344]">Acesso ao Dashboard</h2>
-            <p className="text-[#8FA3B0] text-sm mt-1">Área restrita — informe suas credenciais</p>
+            <div
+              className="w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center"
+              style={{ background: 'var(--brand-primary-soft)' }}
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 20h16" /><path d="M7 16V9M12 16V5M17 16v-7" />
+              </svg>
+            </div>
+            <h2
+              className="text-xl font-extrabold"
+              style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+            >
+              Acesso ao Dashboard
+            </h2>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+              Área restrita — informe suas credenciais
+            </p>
           </div>
 
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[#1A3344] text-sm font-semibold">Login</label>
+              <label
+                className="text-sm font-semibold"
+                style={{ color: 'var(--text-body)', fontFamily: 'var(--font-display)' }}
+              >
+                Login
+              </label>
               <input
                 type="text"
                 value={login}
@@ -109,28 +131,55 @@ function LoginDashboard({ onSuccess }: { onSuccess: () => void }) {
                 onKeyDown={e => { if (e.key === 'Enter') tentar() }}
                 placeholder="login"
                 autoFocus
-                className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none transition-colors"
+                className="w-full h-12 px-3.5 rounded-xl text-base outline-none transition-colors"
+                style={{
+                  border: '1.5px solid var(--line)',
+                  color: 'var(--text-strong)',
+                  fontFamily: 'var(--font-body)',
+                }}
+                onFocus={e => (e.target.style.border = '2px solid var(--brand-primary)')}
+                onBlur={e => (e.target.style.border = '1.5px solid var(--line)')}
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[#1A3344] text-sm font-semibold">Senha</label>
+              <label
+                className="text-sm font-semibold"
+                style={{ color: 'var(--text-body)', fontFamily: 'var(--font-display)' }}
+              >
+                Senha
+              </label>
               <input
                 type="password"
                 value={senha}
                 onChange={e => { setSenha(e.target.value); setErro(false) }}
                 onKeyDown={e => { if (e.key === 'Enter') tentar() }}
                 placeholder="••••••"
-                className="border-2 border-[#DDE4EA] rounded-xl px-4 py-3 text-[#1A3344] text-base focus:border-[#1E9FAC] focus:outline-none transition-colors"
+                className="w-full h-12 px-3.5 rounded-xl text-base outline-none transition-colors"
+                style={{
+                  border: '1.5px solid var(--line)',
+                  color: 'var(--text-strong)',
+                  fontFamily: 'var(--font-body)',
+                }}
+                onFocus={e => (e.target.style.border = '2px solid var(--brand-primary)')}
+                onBlur={e => (e.target.style.border = '1.5px solid var(--line)')}
               />
             </div>
             {erro && (
-              <p className="text-red-500 text-sm text-center font-medium">Login ou senha incorretos</p>
+              <p className="text-sm text-center font-semibold" style={{ color: 'var(--signal-red)' }}>
+                Login ou senha incorretos
+              </p>
             )}
           </div>
 
           <button
             onClick={tentar}
-            className="bg-[#1E9FAC] hover:bg-[#157A86] active:scale-95 text-white font-bold text-lg py-4 rounded-xl transition-all"
+            className="font-bold text-lg py-4 rounded-xl transition-all active:scale-[0.97]"
+            style={{
+              background: 'var(--brand-primary)',
+              color: '#fff',
+              fontFamily: 'var(--font-display)',
+              boxShadow: '0 4px 14px rgba(86,164,187,0.3)',
+            }}
           >
             Entrar →
           </button>
@@ -300,11 +349,11 @@ export default function DashboardPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F2F5F7] flex flex-col">
+    <div className="min-h-screen bg-[#EEF3F5] flex flex-col">
       <Navegacao />
 
       {/* Cabeçalho fixo: abas + período */}
-      <div className="bg-white border-b border-[#DDE4EA] sticky top-0 z-20 shadow-sm">
+      <div className="bg-white border-b border-[#DDE6EB] sticky top-0 z-20 shadow-sm">
         {/* Abas */}
         <div className="flex">
           {([
@@ -316,7 +365,7 @@ export default function DashboardPage() {
               key={a.v}
               onClick={() => setAba(a.v)}
               className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-bold border-b-2 transition-all ${
-                aba === a.v ? 'text-[#1E9FAC] border-[#1E9FAC]' : 'text-[#8FA3B0] border-transparent hover:text-[#1A3344]'
+                aba === a.v ? 'text-[#56A4BB] border-[#56A4BB]' : 'text-[#607A89] border-transparent hover:text-[#1F3744]'
               }`}
             >
               <span>{a.icon}</span><span className="hidden sm:inline">{a.label}</span>
@@ -328,18 +377,18 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center gap-2 px-4 py-2">
           {PERIODOS.map(p => (
             <button key={p.valor} onClick={() => setPeriodo(p.valor)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${periodo === p.valor ? 'bg-[#1E9FAC] text-white border-[#1E9FAC]' : 'bg-white text-[#8FA3B0] border-[#DDE4EA] hover:border-[#1E9FAC]'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${periodo === p.valor ? 'bg-[#56A4BB] text-white border-[#56A4BB]' : 'bg-white text-[#607A89] border-[#DDE6EB] hover:border-[#56A4BB]'}`}>
               {p.label}
             </button>
           ))}
           {periodo === 'personalizado' && (
             <>
-              <input type="date" value={ini} onChange={e => setIni(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-[#DDE4EA] text-[#1A3344] focus:border-[#1E9FAC] focus:outline-none" />
-              <span className="text-[#8FA3B0] text-xs">→</span>
-              <input type="date" value={fim} onChange={e => setFim(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-[#DDE4EA] text-[#1A3344] focus:border-[#1E9FAC] focus:outline-none" />
+              <input type="date" value={ini} onChange={e => setIni(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-[#DDE6EB] text-[#1F3744] focus:border-[#56A4BB] focus:outline-none" />
+              <span className="text-[#607A89] text-xs">→</span>
+              <input type="date" value={fim} onChange={e => setFim(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-[#DDE6EB] text-[#1F3744] focus:border-[#56A4BB] focus:outline-none" />
             </>
           )}
-          <button onClick={buscar} className="ml-auto text-[#8FA3B0] hover:text-[#1E9FAC] text-xs font-semibold flex items-center gap-1 transition-colors">
+          <button onClick={buscar} className="ml-auto text-[#607A89] hover:text-[#56A4BB] text-xs font-semibold flex items-center gap-1 transition-colors">
             {carregando ? '⏳' : '↻'} {carregando ? 'Carregando…' : 'Atualizar'}
           </button>
         </div>
@@ -354,8 +403,8 @@ export default function DashboardPage() {
           <>
             {/* KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KPI label="Apontamentos" valor={dp.ricos.length} cor="text-[#1E9FAC]" borda="border-l-[#1E9FAC]" icon="📋" />
-              <KPI label="Peças Registradas" valor={dp.totalPecas} cor="text-[#1A3344]" borda="border-l-[#1A3344]" icon="🔩" />
+              <KPI label="Apontamentos" valor={dp.ricos.length} cor="text-[#56A4BB]" borda="border-l-[#56A4BB]" icon="📋" />
+              <KPI label="Peças Registradas" valor={dp.totalPecas} cor="text-[#1F3744]" borda="border-l-[#1F3744]" icon="🔩" />
               <KPI label="Operadoras Ativas" valor={dp.operadoras.size} cor="text-[#8b5cf6]" borda="border-l-[#8b5cf6]" icon="👷" />
               <KPI label="OPs no Período" valor={dp.ops.size} cor="text-[#f97316]" borda="border-l-[#f97316]" icon="🏭" />
             </div>
@@ -366,10 +415,10 @@ export default function DashboardPage() {
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={dp.evDia} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
-                    <XAxis dataKey="data" tick={{ fill: '#8FA3B0', fontSize: 11 }} />
-                    <YAxis tick={{ fill: '#8FA3B0', fontSize: 11 }} allowDecimals={false} />
+                    <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 11 }} />
+                    <YAxis tick={{ fill: '#607A89', fontSize: 11 }} allowDecimals={false} />
                     <Tooltip {...TT} />
-                    <Bar dataKey="Apontamentos" fill="#1E9FAC" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Apontamentos" fill="#56A4BB" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </Painel>
@@ -379,8 +428,8 @@ export default function DashboardPage() {
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={dp.porOperadora} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
-                    <XAxis type="number" tick={{ fill: '#8FA3B0', fontSize: 11 }} allowDecimals={false} />
-                    <YAxis type="category" dataKey="nome" tick={{ fill: '#1A3344', fontSize: 11 }} width={80} />
+                    <XAxis type="number" tick={{ fill: '#607A89', fontSize: 11 }} allowDecimals={false} />
+                    <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 11 }} width={80} />
                     <Tooltip {...TT} />
                     <Bar dataKey="Apontamentos" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -400,7 +449,7 @@ export default function DashboardPage() {
                           {dp.porGrupo.map((e, i) => <Cell key={e.grupo} fill={CORES_GRUPO[e.grupo] ?? PALETA[i]} />)}
                         </Pie>
                         <Tooltip {...TT} formatter={(v: unknown) => [`${v} apontamentos`]} />
-                        <Legend wrapperStyle={{ fontSize: 12, color: '#8FA3B0' }} />
+                        <Legend wrapperStyle={{ fontSize: 12, color: '#607A89' }} />
                       </PieChart>
                     </ResponsiveContainer>
                 }
@@ -409,16 +458,16 @@ export default function DashboardPage() {
               {/* Últimos apontamentos */}
               <Painel titulo="Últimos Registros">
                 {dp.ultimosReg.length === 0 ? <Vazio /> : (
-                  <div className="flex flex-col divide-y divide-[#F2F5F7]">
+                  <div className="flex flex-col divide-y divide-[#EEF3F5]">
                     {dp.ultimosReg.map(a => (
                       <div key={a.id} className="flex items-center justify-between py-2.5 gap-3">
                         <div className="flex flex-col min-w-0">
-                          <span className="text-[#1A3344] text-xs font-semibold truncate">{a.tipo_desperdicio}</span>
-                          <span className="text-[#8FA3B0] text-[10px]">{a.nome_operador} · {a.horaFmt} · OP {a.numero_op}</span>
+                          <span className="text-[#1F3744] text-xs font-semibold truncate">{a.tipo_desperdicio}</span>
+                          <span className="text-[#607A89] text-[10px]">{a.nome_operador} · {a.horaFmt} · OP {a.numero_op}</span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {a.fibra && (
-                            <span className="text-[10px] bg-[#E6F6F8] text-[#1E9FAC] font-bold px-1.5 py-0.5 rounded-md">
+                            <span className="text-[10px] bg-[#E8F2F5] text-[#56A4BB] font-bold px-1.5 py-0.5 rounded-md">
                               {a.fibra === 'F272' ? '272' : '365'}
                             </span>
                           )}
@@ -451,10 +500,10 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={dp.evDia} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
-                  <XAxis dataKey="data" tick={{ fill: '#8FA3B0', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#8FA3B0', fontSize: 11 }} allowDecimals={false} />
+                  <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#607A89', fontSize: 11 }} allowDecimals={false} />
                   <Tooltip {...TT} />
-                  <Legend wrapperStyle={{ color: '#8FA3B0', fontSize: 12 }} />
+                  <Legend wrapperStyle={{ color: '#607A89', fontSize: 12 }} />
                   <Line type="monotone" dataKey="Perdas" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 4, fill: '#ef4444' }} activeDot={{ r: 6 }} />
                   <Line type="monotone" dataKey="Retrabalhos" stroke="#eab308" strokeWidth={2.5} dot={{ r: 4, fill: '#eab308' }} activeDot={{ r: 6 }} />
                 </LineChart>
@@ -464,7 +513,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Pareto por ocorrências */}
               <Painel titulo="Pareto — Frequência por Tipo (ocorrências)">
-                <GraficoPareto dados={dp.paretoOcorrencias} corBarra="#1E9FAC" labelValor="Ocorrências" />
+                <GraficoPareto dados={dp.paretoOcorrencias} corBarra="#56A4BB" labelValor="Ocorrências" />
               </Painel>
 
               {/* Pareto por custo financeiro */}
@@ -478,11 +527,11 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={230}>
                 <BarChart data={dp.porOperadora} layout="vertical" margin={{ top: 5, right: 50, left: 90, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: '#8FA3B0', fontSize: 11 }} allowDecimals={false} />
-                  <YAxis type="category" dataKey="nome" tick={{ fill: '#1A3344', fontSize: 11 }} width={90} />
+                  <XAxis type="number" tick={{ fill: '#607A89', fontSize: 11 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 11 }} width={90} />
                   <Tooltip {...TT} />
-                  <Bar dataKey="Apontamentos" fill="#1E9FAC" radius={[0, 4, 4, 0]}
-                    label={{ position: 'right', fill: '#8FA3B0', fontSize: 10 }} />
+                  <Bar dataKey="Apontamentos" fill="#56A4BB" radius={[0, 4, 4, 0]}
+                    label={{ position: 'right', fill: '#607A89', fontSize: 10 }} />
                 </BarChart>
               </ResponsiveContainer>
             </Painel>
@@ -494,11 +543,11 @@ export default function DashboardPage() {
                 : <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={dp.fibraGrupo} margin={{ top: 5, right: 20, left: 10, bottom: 40 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
-                      <XAxis dataKey="grupo" tick={{ fill: '#8FA3B0', fontSize: 11 }} angle={-15} textAnchor="end" interval={0} />
-                      <YAxis tick={{ fill: '#8FA3B0', fontSize: 11 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
+                      <XAxis dataKey="grupo" tick={{ fill: '#607A89', fontSize: 11 }} angle={-15} textAnchor="end" interval={0} />
+                      <YAxis tick={{ fill: '#607A89', fontSize: 11 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
                       <Tooltip {...TT} formatter={(v: unknown) => [R(v as number)]} />
-                      <Legend wrapperStyle={{ color: '#8FA3B0', fontSize: 12 }} />
-                      <Bar dataKey="Fibra 272" fill="#1E9FAC" radius={[3, 3, 0, 0]} />
+                      <Legend wrapperStyle={{ color: '#607A89', fontSize: 12 }} />
+                      <Bar dataKey="Fibra 272" fill="#56A4BB" radius={[3, 3, 0, 0]} />
                       <Bar dataKey="Fibra 365" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -516,7 +565,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KPI label="Custo Total" valor={R(dp.custoTotal)} cor="text-red-500" borda="border-l-red-500" icon="💸" />
               <KPI label="Custo Médio / Dia" valor={R(dp.custoDiaMedio)} cor="text-[#f97316]" borda="border-l-[#f97316]" icon="📅" />
-              <KPI label="Maior Fonte de Custo" valor={dp.porTipo[0]?.nome ?? '—'} cor="text-[#1A3344]" borda="border-l-[#1A3344]" icon="⚠️" />
+              <KPI label="Maior Fonte de Custo" valor={dp.porTipo[0]?.nome ?? '—'} cor="text-[#1F3744]" borda="border-l-[#1F3744]" icon="⚠️" />
               <KPI label="Projeção Mensal" valor={R(dp.projecaoMensal)} cor="text-[#8b5cf6]" borda="border-l-[#8b5cf6]" icon="📈" />
             </div>
 
@@ -531,11 +580,11 @@ export default function DashboardPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" />
-                  <XAxis dataKey="data" tick={{ fill: '#8FA3B0', fontSize: 11 }} />
-                  <YAxis yAxisId="l" tick={{ fill: '#8FA3B0', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
-                  <YAxis yAxisId="r" orientation="right" tick={{ fill: '#8FA3B0', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
+                  <XAxis dataKey="data" tick={{ fill: '#607A89', fontSize: 11 }} />
+                  <YAxis yAxisId="l" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
+                  <YAxis yAxisId="r" orientation="right" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
                   <Tooltip {...TT} formatter={(v: unknown) => [R(v as number)]} />
-                  <Legend wrapperStyle={{ color: '#8FA3B0', fontSize: 12 }} />
+                  <Legend wrapperStyle={{ color: '#607A89', fontSize: 12 }} />
                   <Bar yAxisId="l" dataKey="CustoDia" name="Custo do Dia" fill="#ef4444" opacity={0.7} radius={[3, 3, 0, 0]} />
                   <Area yAxisId="r" type="monotone" dataKey="CustoAcumulado" name="Acumulado" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#gAcum)" dot={false} />
                 </ComposedChart>
@@ -550,11 +599,11 @@ export default function DashboardPage() {
                   : <ResponsiveContainer width="100%" height={270}>
                       <BarChart data={dp.porTipo} layout="vertical" margin={{ top: 5, right: 80, left: 130, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
-                        <XAxis type="number" tick={{ fill: '#8FA3B0', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
-                        <YAxis type="category" dataKey="nome" tick={{ fill: '#1A3344', fontSize: 10 }} width={130} />
+                        <XAxis type="number" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
+                        <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 10 }} width={130} />
                         <Tooltip {...TT} formatter={(v: unknown) => [R(v as number), 'Custo']} />
                         <Bar dataKey="Custo" radius={[0, 4, 4, 0]}
-                          label={{ position: 'right', fill: '#8FA3B0', fontSize: 9, formatter: (v: unknown) => Number(v) > 0 ? R(Number(v)) : '' }}>
+                          label={{ position: 'right', fill: '#607A89', fontSize: 9, formatter: (v: unknown) => Number(v) > 0 ? R(Number(v)) : '' }}>
                           {dp.porTipo.map((e, i) => <Cell key={e.nome} fill={PALETA[i % PALETA.length]} />)}
                         </Bar>
                       </BarChart>
@@ -569,11 +618,11 @@ export default function DashboardPage() {
                   : <ResponsiveContainer width="100%" height={270}>
                       <BarChart data={dp.porOperadoraCusto} layout="vertical" margin={{ top: 5, right: 80, left: 90, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#E8EEF2" horizontal={false} />
-                        <XAxis type="number" tick={{ fill: '#8FA3B0', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
-                        <YAxis type="category" dataKey="nome" tick={{ fill: '#1A3344', fontSize: 10 }} width={90} />
+                        <XAxis type="number" tick={{ fill: '#607A89', fontSize: 10 }} tickFormatter={v => `R$${Number(v).toFixed(0)}`} />
+                        <YAxis type="category" dataKey="nome" tick={{ fill: '#1F3744', fontSize: 10 }} width={90} />
                         <Tooltip {...TT} formatter={(v: unknown) => [R(v as number), 'Custo']} />
                         <Bar dataKey="Custo" fill="#10b981" radius={[0, 4, 4, 0]}
-                          label={{ position: 'right', fill: '#8FA3B0', fontSize: 9, formatter: (v: unknown) => Number(v) > 0 ? R(Number(v)) : '' }} />
+                          label={{ position: 'right', fill: '#607A89', fontSize: 9, formatter: (v: unknown) => Number(v) > 0 ? R(Number(v)) : '' }} />
                       </BarChart>
                     </ResponsiveContainer>
                 }
@@ -592,7 +641,7 @@ export default function DashboardPage() {
                           {dp.porMaterial.map((e, i) => <Cell key={e.nome} fill={PALETA[i % PALETA.length]} />)}
                         </Pie>
                         <Tooltip {...TT} formatter={(v: unknown) => [R(v as number)]} />
-                        <Legend wrapperStyle={{ fontSize: 11, color: '#8FA3B0' }}
+                        <Legend wrapperStyle={{ fontSize: 11, color: '#607A89' }}
                           formatter={(v: string) => v.length > 24 ? v.slice(0, 22) + '…' : v} />
                       </PieChart>
                     </ResponsiveContainer>
@@ -609,22 +658,22 @@ export default function DashboardPage() {
                         return (
                           <div key={op.numero} className="flex flex-col gap-1">
                             <div className="flex items-center gap-3">
-                              <span className={`text-[11px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? 'bg-red-500 text-white' : i === 1 ? 'bg-orange-400 text-white' : i === 2 ? 'bg-yellow-400 text-white' : 'bg-[#DDE4EA] text-[#3D5568]'}`}>
+                              <span className={`text-[11px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? 'bg-red-500 text-white' : i === 1 ? 'bg-orange-400 text-white' : i === 2 ? 'bg-yellow-400 text-white' : 'bg-[#DDE6EB] text-[#3D5568]'}`}>
                                 {i + 1}
                               </span>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[#1A3344] font-bold text-sm">{op.numero}</span>
+                                  <span className="text-[#1F3744] font-bold text-sm">{op.numero}</span>
                                   <span className="text-red-500 font-black text-sm tabular-nums">{R(op.Custo)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[#8FA3B0] text-[10px]">Fibra {op.fibra === 'F272' ? '272' : op.fibra === 'F365' ? '365' : op.fibra} · {op.Apontamentos} apontamentos</span>
-                                  <span className="text-[#8FA3B0] text-[10px]">{pct.toFixed(1)}% do total</span>
+                                  <span className="text-[#607A89] text-[10px]">Fibra {op.fibra === 'F272' ? '272' : op.fibra === 'F365' ? '365' : op.fibra} · {op.Apontamentos} apontamentos</span>
+                                  <span className="text-[#607A89] text-[10px]">{pct.toFixed(1)}% do total</span>
                                 </div>
                               </div>
                             </div>
                             {/* Barra de progresso */}
-                            <div className="h-1 bg-[#DDE4EA] rounded-full ml-8">
+                            <div className="h-1 bg-[#DDE6EB] rounded-full ml-8">
                               <div className="h-1 rounded-full bg-red-400 transition-all" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
@@ -645,8 +694,8 @@ export default function DashboardPage() {
 
 function KPI({ label, valor, cor, borda, icon }: { label: string; valor: string | number; cor: string; borda: string; icon: string }) {
   return (
-    <div className={`bg-white border border-[#DDE4EA] border-l-4 ${borda} rounded-xl p-4 flex flex-col gap-1 shadow-sm`}>
-      <p className="text-[#8FA3B0] text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+    <div className={`bg-white border border-[#DDE6EB] border-l-4 ${borda} rounded-xl p-4 flex flex-col gap-1 shadow-sm`}>
+      <p className="text-[#607A89] text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
         <span>{icon}</span>{label}
       </p>
       <p className={`text-2xl font-extrabold ${cor} leading-tight break-words`}>{valor}</p>
@@ -656,9 +705,9 @@ function KPI({ label, valor, cor, borda, icon }: { label: string; valor: string 
 
 function Painel({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-[#DDE4EA] rounded-xl p-4 flex flex-col gap-3 shadow-sm">
-      <h3 className="text-[#1A3344] font-bold text-[11px] uppercase tracking-wider flex items-center gap-2">
-        <span className="w-1 h-3.5 bg-[#1E9FAC] rounded-full inline-block shrink-0" />
+    <div className="bg-white border border-[#DDE6EB] rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+      <h3 className="text-[#1F3744] font-bold text-[11px] uppercase tracking-wider flex items-center gap-2">
+        <span className="w-1 h-3.5 bg-[#56A4BB] rounded-full inline-block shrink-0" />
         {titulo}
       </h3>
       {children}
@@ -667,5 +716,5 @@ function Painel({ titulo, children }: { titulo: string; children: React.ReactNod
 }
 
 function Vazio() {
-  return <p className="text-[#8FA3B0] text-sm text-center py-10">Sem dados no período</p>
+  return <p className="text-[#607A89] text-sm text-center py-10">Sem dados no período</p>
 }

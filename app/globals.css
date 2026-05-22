@@ -1,8 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F2F5F7;
-  --foreground: #1A3344;
+  /* ─── Brand ─────────────────────────────────────────────────────── */
+  --brand-primary:      #56A4BB;
+  --brand-primary-dark: #3E8294;
+  --brand-primary-soft: #E8F2F5;
+  --brand-primary-tint: #F4F9FA;
+  --brand-deep:         #1F3744;
+  --brand-deep-2:       #2C4A5C;
+  --brand-tecno:        #9CE5EE;
+  --brand-tecno-deep:   #6BC8D4;
+  --brand-soft:         #D9E4E8;
+
+  /* ─── Surfaces ───────────────────────────────────────────────────── */
+  --bg-page:     #EEF3F5;
+  --bg-card:     #FFFFFF;
+  --bg-card-hover: #F8FAFB;
+
+  /* ─── Text ───────────────────────────────────────────────────────── */
+  --text-strong: #15252F;
+  --text-body:   #2E4555;
+  --text-muted:  #607A89;
+  --text-faint:  #94ACBA;
+
+  /* ─── Signals ────────────────────────────────────────────────────── */
+  --signal-red:        #C8504F;
+  --signal-red-soft:   #FAEDEC;
+  --signal-green:      #5BA67E;
+  --signal-green-soft: #E5F1EA;
+  --signal-amber:      #D4A155;
+  --signal-amber-soft: #FAF1E2;
+
+  /* ─── Lines ──────────────────────────────────────────────────────── */
+  --line:        #DDE6EB;
+  --line-soft:   #ECF1F4;
+  --line-strong: #C7D4DB;
+
+  /* ─── Typography ─────────────────────────────────────────────────── */
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-body:    'Manrope', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  /* ─── Compat Tailwind ────────────────────────────────────────────── */
+  --background: #EEF3F5;
+  --foreground: #1F3744;
 }
 
 @theme inline {
@@ -11,13 +52,27 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-strong);
+  font-family: var(--font-body);
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01" on, "cv11" on;
 }
 
 * {
   touch-action: manipulation;
   box-sizing: border-box;
 }
+
+/* ─── Scrollbars ─────────────────────────────────────────────────────── */
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-thumb { background: rgba(95,136,161,0.25); border-radius: 3px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ─── Animations ─────────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+.pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
