@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import type { Apontamento } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
@@ -99,13 +100,15 @@ function LoginDashboard({ onSuccess }: { onSuccess: () => void }) {
           style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 1px 4px rgba(31,55,68,0.06)' }}
         >
           <div className="text-center">
-            <div
-              className="w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center"
-              style={{ background: 'var(--brand-primary-soft)' }}
-            >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 20h16" /><path d="M7 16V9M12 16V5M17 16v-7" />
-              </svg>
+            <div className="mx-auto mb-4">
+              <Image
+                src="/Logo MSB-14.png"
+                alt="MSB"
+                width={96}
+                height={42}
+                style={{ objectFit: 'contain' }}
+                priority
+              />
             </div>
             <h2
               className="text-xl font-extrabold"
