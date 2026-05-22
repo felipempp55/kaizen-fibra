@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase'
 
 const STORAGE_KEY = 'kaizen-ops-abertas'
 
-interface OP { numero: string; fibra: TipoFibra }
+interface OP { numero: string; fibra: TipoFibra; tamanho?: number }
 
 function carregarDoStorage(): { ops: OP[]; opAtiva: OP | null } {
   try {
@@ -154,6 +154,7 @@ export default function Home() {
   const [abrindoNovaOp, setAbrindoNovaOp] = useState(false)
   const [novoNumeroOP, setNovoNumeroOP] = useState('')
   const [novaFibra, setNovaFibra] = useState<TipoFibra | null>(null)
+  const [novoTamanhoOp, setNovoTamanhoOp] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [formKey, setFormKey] = useState(0)
   const [apontamentoOpen, setApontamentoOpen] = useState(false)
@@ -206,14 +207,14 @@ export default function Home() {
     return { total, tempoTotal, porGrupo, porHora, ultimosApontamentos }
   }, [dadosHoje])
 
-  function podeSalvarOp() { return novoNumeroOP.trim().length > 0 && novaFibra !== null }
+  function podeSalvarOp() { return novoNumeroOP.trim().length > 0 && novaFibra !== null && parseInt(novoTamanhoOp || '0') > 0 }
 
   function confirmarNovaOp() {
     if (!podeSalvarOp() || !novaFibra) return
-    const nova: OP = { numero: novoNumeroOP.trim().toUpperCase(), fibra: novaFibra }
+    const nova: OP = { numero: novoNumeroOP.trim().toUpperCase(), fibra: novaFibra, tamanho: parseInt(novoTamanhoOp) || undefined }
     setOps(prev => [...prev.filter(o => o.numero !== nova.numero), nova])
     setOpAtiva(nova)
-    setNovoNumeroOP(''); setNovaFibra(null); setAbrindoNovaOp(false); setFormKey(k => k + 1)
+    setNovoNumeroOP(''); setNovaFibra(null); setNovoTamanhoOp(''); setAbrindoNovaOp(false); setFormKey(k => k + 1)
   }
 
   function solicitarFechamentoOp(numero: string) {
@@ -277,7 +278,7 @@ export default function Home() {
         <Navegacao />
         <main className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full flex flex-col gap-4 mt-4">
           {abrindoNovaOp && (
-            <button onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP(''); setNovaFibra(null) }}
+            <button onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP(''); setNovaFibra(null); setNovoTamanhoOp('') }}
               className="text-sm self-start flex items-center gap-1 transition-colors"
               style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
               ← Cancelar
@@ -322,6 +323,18 @@ export default function Home() {
                 ))}
               </div>
             </div>
+            {/* Separador */}
+            <div style={{ height: 1, background: 'var(--line)' }} />
+
+            <TecladoNumerico
+              label="Tamanho da OP (total de peças)"
+              valor={novoTamanhoOp}
+              onChange={setNovoTamanhoOp}
+              placeholder="ex: 5000"
+              maxLength={7}
+              onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }}
+            />
+
             <button onClick={confirmarNovaOp} disabled={!podeSalvarOp()}
               className="font-bold text-xl py-5 rounded-xl transition-all active:scale-[0.97] disabled:opacity-40"
               style={{
@@ -404,6 +417,9 @@ export default function Home() {
                   <MetricaMini label="Apontamentos" valor={String(metricas.total)} />
                   <MetricaMini label="Tempo Retrabalho"
                     valor={metricas.tempoTotal > 0 ? `${metricas.tempoTotal} min` : '—'} />
+                  {opAtiva!.tamanho && (
+                    <MetricaMini label="Tamanho da OP" valor={opAtiva!.tamanho.toLocaleString('pt-BR') + ' pç'} />
+                  )}
                 </div>
               </div>
 
