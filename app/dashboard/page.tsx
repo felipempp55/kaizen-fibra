@@ -100,7 +100,7 @@ function LoginDashboard({ onSuccess }: { onSuccess: () => void }) {
           style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 1px 4px rgba(31,55,68,0.06)' }}
         >
           <div className="text-center">
-            <div className="mx-auto mb-4">
+            <div className="flex justify-center mb-4">
               <Image
                 src="/Logo MSB-14.png"
                 alt="MSB"
