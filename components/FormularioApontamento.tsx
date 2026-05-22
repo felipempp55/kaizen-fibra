@@ -39,11 +39,12 @@ import EtapaIndicador from './EtapaIndicador'
 import BotaoGrande from './BotaoGrande'
 import TecladoNumerico from './TecladoNumerico'
 
-type TipoEtapa = 'grupo' | 'tipo' | 'quantidade' | 'segunda_quantidade' | 'classificacao' | 'tempo' | 'confirmar'
+type TipoEtapa = 'grupo' | 'tipo' | 'operadora' | 'quantidade' | 'segunda_quantidade' | 'classificacao' | 'tempo' | 'confirmar'
 
 const LABELS_ETAPA: Record<TipoEtapa, string> = {
   grupo: 'Grupo',
   tipo: 'Tipo',
+  operadora: 'Operadora',
   quantidade: 'Quantidade',
   segunda_quantidade: 'Adicional',
   classificacao: 'Classificação',
@@ -51,8 +52,10 @@ const LABELS_ETAPA: Record<TipoEtapa, string> = {
   confirmar: 'Confirmar',
 }
 
+const OPERADORAS = ['Janete', 'Poliana', 'Alice', 'Bruna Nascimento', 'Bruna Fernanda', 'Taísa', 'Beatriz']
+
 function getSequencia(tipo: TipoDesperdicio | null): TipoEtapa[] {
-  const base: TipoEtapa[] = ['grupo', 'tipo', 'quantidade']
+  const base: TipoEtapa[] = ['grupo', 'tipo', 'operadora', 'quantidade']
   if (!tipo) return [...base, 'confirmar']
   // contador_duplo mostra as duas quantidades na mesma tela — não gera etapa separada
   if (tipo.segunda_quantidade && tipo.input !== 'contador_duplo') base.push('segunda_quantidade')
@@ -113,6 +116,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
   const [etapa, setEtapa] = useState(0)
   const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null)
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoDesperdicio | null>(null)
+  const [operadoraSelecionada, setOperadoraSelecionada] = useState<string | null>(null)
   const [quantidade, setQuantidade] = useState('')
   const [segundaQuantidade, setSegundaQuantidade] = useState('')
   const [classificacao, setClassificacao] = useState<Classificacao | null>(null)
@@ -137,6 +141,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
     setEtapa(0)
     setGrupoSelecionado(null)
     setTipoSelecionado(null)
+    setOperadoraSelecionada(null)
     setQuantidade('')
     setSegundaQuantidade('')
     setClassificacao(null)
@@ -151,7 +156,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
       await onSalvar({
         grupo: grupoSelecionado,
         tipo_desperdicio: tipoSelecionado.nome,
-        nome_operador: operador,
+        nome_operador: operadoraSelecionada ?? operador,
         numero_op: op.toUpperCase(),
         quantidade_pecas: tipoSelecionado.unidade === 'pecas' ? parseInt(quantidade) : null,
         quantidade_ml: tipoSelecionado.unidade === 'ml'
@@ -172,6 +177,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
 
   function podeContinuar(): boolean {
     switch (etapaAtual) {
+      case 'operadora': return !!operadoraSelecionada
       case 'quantidade':
         if (tipoSelecionado?.input === 'contador_duplo') return parseInt(quantidade || '0') > 0
         return quantidade.length > 0
@@ -191,11 +197,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
         <div className="text-8xl">✅</div>
         <h2 className="text-3xl font-bold text-[#1E9FAC] text-center">Apontamento Salvo!</h2>
         <p className="text-[#8FA3B0] text-center text-lg">
-          {tipoSelecionado?.nome} · OP {op} · {quantidade}{' '}
-          {tipoSelecionado?.unidade === 'ml' ? 'ml' : 'peça(s)'}
-          {tipoSelecionado?.segunda_quantidade && segundaQuantidade
-            ? ` · ${segundaQuantidade} ${tipoSelecionado.segunda_quantidade.label.toLowerCase()}`
-            : ''}
+          {tipoSelecionado?.nome} · {operadoraSelecionada} · OP {op}
         </p>
         <button
           onClick={resetar}
@@ -312,6 +314,28 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
               }}
             />
           ))}
+        </div>
+      )}
+
+      {/* Operadora */}
+      {etapaAtual === 'operadora' && (
+        <div className="flex flex-col gap-3">
+          <p className="text-[#8FA3B0] text-sm text-center font-medium mb-1">Selecione a operadora</p>
+          <div className="grid grid-cols-2 gap-3">
+            {OPERADORAS.map((nome) => (
+              <button
+                key={nome}
+                onClick={() => { setOperadoraSelecionada(nome); avancar() }}
+                className={`rounded-xl border-2 px-3 py-4 text-center font-bold text-sm transition-all active:scale-[0.98] ${
+                  operadoraSelecionada === nome
+                    ? 'bg-[#1E9FAC] border-[#1E9FAC] text-white'
+                    : 'bg-white border-[#DDE4EA] text-[#1A3344] hover:border-[#1E9FAC]'
+                }`}
+              >
+                {nome}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -528,7 +552,7 @@ export default function FormularioApontamento({ op, operador, onSalvar }: Props)
           <h3 className="text-xl font-bold text-center text-[#1A3344] mb-2">Confirmar apontamento</h3>
           <div className="bg-white border border-[#DDE4EA] rounded-xl p-5 flex flex-col gap-3 text-base">
             <Linha label="OP" valor={op} />
-            {operador && <Linha label="Operador" valor={operador} />}
+            <Linha label="Operadora" valor={operadoraSelecionada ?? ''} />
             <Linha label="Grupo" valor={grupoSelecionado ?? ''} />
             <Linha label="Tipo" valor={tipoSelecionado?.nome ?? ''} />
             <Linha label={labelQtdPrincipal} valor={quantidade} />
