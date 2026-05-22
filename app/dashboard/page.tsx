@@ -204,18 +204,40 @@ export default function DashboardPage() {
   const [dados, setDados] = useState<Apontamento[]>([])
   const [carregando, setCarregando] = useState(true)
   const [aba, setAba] = useState<Aba>('producao')
+  const [filtroOp, setFiltroOp] = useState<'atual' | 'anterior' | null>(null)
+  const [opsRecentes, setOpsRecentes] = useState<string[]>([])
+
+  const carregarOpsRecentes = useCallback(async () => {
+    const desde = new Date(); desde.setDate(desde.getDate() - 90)
+    const { data } = await supabase
+      .from('apontamentos').select('numero_op, created_at')
+      .gte('created_at', desde.toISOString())
+      .order('created_at', { ascending: false })
+    if (!data) return
+    const seen = new Set<string>(); const ops: string[] = []
+    for (const row of data) {
+      if (row.numero_op && !seen.has(row.numero_op)) { seen.add(row.numero_op); ops.push(row.numero_op) }
+    }
+    setOpsRecentes(ops.slice(0, 5))
+  }, [])
 
   const buscar = useCallback(async () => {
     setCarregando(true)
-    const { de, ate } = getIntervalo(periodo, ini, fim)
-    const { data } = await supabase
-      .from('apontamentos').select('*')
-      .gte('created_at', de).lte('created_at', ate)
-      .order('created_at', { ascending: true })
+    let query = supabase.from('apontamentos').select('*').order('created_at', { ascending: true })
+    if (filtroOp !== null && opsRecentes.length > 0) {
+      const opNumero = filtroOp === 'atual' ? opsRecentes[0] : opsRecentes[1]
+      if (opNumero) query = query.eq('numero_op', opNumero)
+      else { setDados([]); setCarregando(false); return }
+    } else {
+      const { de, ate } = getIntervalo(periodo, ini, fim)
+      query = query.gte('created_at', de).lte('created_at', ate)
+    }
+    const { data } = await query
     setDados(data ?? [])
     setCarregando(false)
-  }, [periodo, ini, fim])
+  }, [periodo, ini, fim, filtroOp, opsRecentes])
 
+  useEffect(() => { if (autenticado) carregarOpsRecentes() }, [autenticado, carregarOpsRecentes])
   useEffect(() => { buscar() }, [buscar])
 
   // ── Processamento único de todos os dados ──────────────────────────────────
@@ -353,8 +375,6 @@ export default function DashboardPage() {
     // ── Métricas de qualidade ──────────────────────────────────────────────
     const taxaRefugo    = totalPecas > 0 ? (pecasPerdidas / totalPecas) * 100 : 0
     const conformidade  = 100 - taxaRefugo
-    // CPK proxy: quanto mais alta a conformidade, mais perto de 1.67 (6-sigma)
-    const cpk           = Math.max(0, Math.min(2, (conformidade / 100) * 1.67 + 0.38))
 
     // ── Mapa de defeitos — dados de hoje ──────────────────────────────────
     const hojeStr      = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
@@ -395,7 +415,7 @@ export default function DashboardPage() {
       porOperadora, porOperadoraCusto, fibraGrupo, porMaterial,
       topOPs, ultimosReg, custoDiaMedio, projecaoMensal, taxaImpacto,
       porTurno, sparkApontamentos, sparkPecas, sparkCusto,
-      taxaRefugo, conformidade, cpk, mapaDefeitos, tendenciaRefugo,
+      taxaRefugo, conformidade, mapaDefeitos, tendenciaRefugo,
       projecaoAnual,
     }
   }, [dados])
@@ -417,7 +437,9 @@ export default function DashboardPage() {
               DASHBOARD · KAIZEN FIBRA
             </p>
             <h1 className="text-xl font-extrabold leading-tight mt-0.5" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
-              Indicadores da Linha
+              {filtroOp !== null
+                ? `OP ${filtroOp === 'atual' ? opsRecentes[0] : opsRecentes[1]}`
+                : 'Indicadores da Linha'}
             </h1>
           </div>
 
@@ -427,9 +449,9 @@ export default function DashboardPage() {
               {PERIODOS.filter(p => p.valor !== 'personalizado').map(p => (
                 <button
                   key={p.valor}
-                  onClick={() => setPeriodo(p.valor)}
+                  onClick={() => { setFiltroOp(null); setPeriodo(p.valor) }}
                   className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                  style={periodo === p.valor
+                  style={filtroOp === null && periodo === p.valor
                     ? { background: 'var(--brand-primary)', color: '#fff', boxShadow: '0 2px 8px rgba(86,164,187,0.3)' }
                     : { background: 'transparent', color: 'var(--text-muted)' }}
                 >
@@ -437,17 +459,50 @@ export default function DashboardPage() {
                 </button>
               ))}
               <button
-                onClick={() => setPeriodo('personalizado')}
+                onClick={() => { setFiltroOp(null); setPeriodo('personalizado') }}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                style={periodo === 'personalizado'
+                style={filtroOp === null && periodo === 'personalizado'
                   ? { background: 'var(--brand-primary)', color: '#fff', boxShadow: '0 2px 8px rgba(86,164,187,0.3)' }
                   : { background: 'transparent', color: 'var(--text-muted)' }}
               >
                 ···
               </button>
+
+              {/* Separador */}
+              {opsRecentes.length > 0 && (
+                <div className="h-4 w-px mx-1" style={{ background: 'var(--line)' }} />
+              )}
+
+              {/* OP Atual */}
+              {opsRecentes[0] && (
+                <button
+                  onClick={() => setFiltroOp('atual')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  title={`OP ${opsRecentes[0]}`}
+                  style={filtroOp === 'atual'
+                    ? { background: '#8b5cf6', color: '#fff', boxShadow: '0 2px 8px rgba(139,92,246,0.3)' }
+                    : { background: 'transparent', color: 'var(--text-muted)' }}
+                >
+                  OP Atual
+                </button>
+              )}
+
+              {/* OP Anterior */}
+              {opsRecentes[1] && (
+                <button
+                  onClick={() => setFiltroOp('anterior')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  title={`OP ${opsRecentes[1]}`}
+                  style={filtroOp === 'anterior'
+                    ? { background: '#8b5cf6', color: '#fff', boxShadow: '0 2px 8px rgba(139,92,246,0.3)' }
+                    : { background: 'transparent', color: 'var(--text-muted)' }}
+                >
+                  OP Anterior
+                </button>
+              )}
             </div>
 
-            {periodo === 'personalizado' && (
+            {filtroOp === null && periodo === 'personalizado' && (
               <div className="flex items-center gap-1.5">
                 <input type="date" value={ini} onChange={e => setIni(e.target.value)}
                   className="text-xs px-2.5 py-1.5 rounded-lg outline-none"
@@ -727,7 +782,7 @@ export default function DashboardPage() {
         {aba === 'qualidade' && (
           <>
             {/* ── KPI Cards ────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               <KPICard
                 label="Taxa de Refugo"
                 valor={dp.taxaRefugo.toFixed(2)}
@@ -748,12 +803,6 @@ export default function DashboardPage() {
                 unidade="%"
                 sparkData={dp.sparkApontamentos.map(v => 100 - (v > 0 ? v * 0.5 : 0))}
                 cor="var(--signal-green)"
-              />
-              <KPICard
-                label="CP / CPK"
-                valor={dp.cpk.toFixed(2)}
-                sparkData={dp.sparkApontamentos}
-                cor="var(--brand-primary)"
               />
             </div>
 
