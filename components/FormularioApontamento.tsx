@@ -36,7 +36,6 @@ function formatMs(ms: number): string {
 
 import { GRUPOS_DESPERDICIO } from '@/lib/desperdicios'
 import type { Classificacao, NovoApontamento, TipoDesperdicio, TipoFibra } from '@/lib/types'
-import { calcularPerdaMateriais, calcularCustoTotal, formatarReal } from '@/lib/materiais'
 import EtapaIndicador from './EtapaIndicador'
 import BotaoGrande from './BotaoGrande'
 import TecladoNumerico from './TecladoNumerico'
@@ -610,15 +609,6 @@ export default function FormularioApontamento({ op, fibra, operador, onSalvar }:
 
       {/* ── CONFIRMAR ─────────────────────────────────────────────────── */}
       {etapaAtual === 'confirmar' && (() => {
-        const qPecas = tipoSelecionado?.unidade === 'pecas' ? parseInt(quantidade || '0') : null
-        const qMl = tipoSelecionado?.unidade === 'ml'
-          ? parseFloat(quantidade.replace(',', '.') || '0')
-          : (tipoSelecionado?.segunda_quantidade ? parseInt(segundaQuantidade || '0') : null)
-        const itensPerdidos = tipoSelecionado
-          ? calcularPerdaMateriais(tipoSelecionado.nome, fibra, qPecas, qMl)
-          : []
-        const custoTotal = calcularCustoTotal(itensPerdidos)
-
         return (
           <div className="flex flex-col gap-4">
             <h3
@@ -667,61 +657,6 @@ export default function FormularioApontamento({ op, fibra, operador, onSalvar }:
               </div>
             </div>
 
-            {/* Materiais perdidos */}
-            {itensPerdidos.length > 0 && (
-              <div
-                className="rounded-xl p-4 flex flex-col gap-2"
-                style={{ background: 'var(--signal-red-soft)', border: '1px solid #f5d2d1' }}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: '#8C2B2A', fontFamily: 'var(--font-mono)' }}
-                  >
-                    Materiais consumidos
-                  </p>
-                  <IconBox />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {itensPerdidos.map((item) => (
-                    <div key={item.material.codigo} className="flex items-center justify-between text-sm">
-                      <span style={{ color: '#5D1F1E' }}>
-                        {item.material.nome}
-                        <span
-                          className="ml-1"
-                          style={{ fontFamily: 'var(--font-mono)', color: '#8C2B2A', opacity: 0.7 }}
-                        >
-                          × {item.quantidade}
-                        </span>
-                      </span>
-                      <span
-                        className="font-bold tabular-nums"
-                        style={{ fontFamily: 'var(--font-mono)', color: '#8C2B2A' }}
-                      >
-                        {formatarReal(item.material.custo * item.quantidade)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div
-                  className="flex justify-between items-center pt-2 mt-1"
-                  style={{ borderTop: '1px solid #f5d2d1' }}
-                >
-                  <span
-                    className="text-sm font-bold"
-                    style={{ color: '#5D1F1E', fontFamily: 'var(--font-display)' }}
-                  >
-                    Total estimado
-                  </span>
-                  <span
-                    className="text-lg font-black tabular-nums"
-                    style={{ fontFamily: 'var(--font-mono)', color: '#5D1F1E', letterSpacing: '-0.02em' }}
-                  >
-                    {formatarReal(custoTotal)}
-                  </span>
-                </div>
-              </div>
-            )}
 
             <button
               onClick={confirmar}

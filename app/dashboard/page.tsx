@@ -965,6 +965,106 @@ export default function DashboardPage() {
               </Painel>
             </div>
 
+            {/* ── Materiais Consumidos — donut + ranking ────────────────────── */}
+            <Painel titulo="">
+              <div className="mb-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+                  COMPOSIÇÃO DO CUSTO
+                </p>
+                <h3 className="text-lg font-extrabold leading-tight" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                  Custo por Material
+                </h3>
+              </div>
+
+              {dp.porMaterial.length === 0 ? <Vazio /> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mt-2">
+
+                  {/* Donut com total no centro */}
+                  <div className="relative flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={230}>
+                      <PieChart>
+                        <Pie
+                          data={dp.porMaterial}
+                          dataKey="Custo"
+                          nameKey="nome"
+                          cx="50%" cy="50%"
+                          innerRadius={68}
+                          outerRadius={100}
+                          paddingAngle={2}
+                          strokeWidth={0}
+                        >
+                          {dp.porMaterial.map((e, i) => (
+                            <Cell key={e.nome} fill={PALETA[i % PALETA.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          {...TT}
+                          formatter={(v: unknown) => [R(v as number), 'Custo']}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {/* Total no centro */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-faint)', fontFamily: 'var(--font-display)' }}>
+                        TOTAL
+                      </p>
+                      <p className="text-2xl font-extrabold leading-tight" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                        {fmtBRL(dp.custoTotal).num}
+                      </p>
+                      <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                        {fmtBRL(dp.custoTotal).suf}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Ranking de materiais */}
+                  <div className="flex flex-col gap-3">
+                    {dp.porMaterial.slice(0, 6).map((mat, i) => {
+                      const pct = dp.custoTotal > 0 ? (mat.Custo / dp.custoTotal) * 100 : 0
+                      return (
+                        <div key={mat.nome} className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ background: PALETA[i % PALETA.length] }}
+                              />
+                              <span
+                                className="text-xs font-semibold truncate"
+                                style={{ color: 'var(--text-body)' }}
+                              >
+                                {mat.nome}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span
+                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                                style={{ background: 'var(--bg-page)', color: 'var(--text-muted)' }}
+                              >
+                                {pct.toFixed(1)}%
+                              </span>
+                              <span
+                                className="text-xs font-bold tabular-nums"
+                                style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-mono)' }}
+                              >
+                                {R(mat.Custo)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 rounded-full" style={{ background: 'var(--line)' }}>
+                            <div
+                              className="h-1.5 rounded-full transition-all"
+                              style={{ width: `${pct}%`, background: PALETA[i % PALETA.length] }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </Painel>
+
             {/* ── Detalhes (mantidos) ───────────────────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Painel titulo="Custo por Tipo de Desperdício">
