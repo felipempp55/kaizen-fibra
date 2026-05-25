@@ -7,6 +7,8 @@ import type { NovoApontamento, TipoFibra, Apontamento } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
 import TecladoNumerico from '@/components/TecladoNumerico'
 import { supabase } from '@/lib/supabase'
+import { exportarXlsx } from '@/lib/exportXlsx'
+import { gerarRelatorioPDF } from '@/lib/exportPdf'
 
 interface OP { numero: string; fibra: TipoFibra; tamanho?: number }
 
@@ -151,6 +153,17 @@ export default function Home() {
   const [dadosHoje, setDadosHoje] = useState<Apontamento[]>([])
   const [carregandoDados, setCarregandoDados] = useState(false)
 
+  // Modal de exportação (xlsx / pdf)
+  type AcaoExport = 'xlsx' | 'pdf'
+  const [modalExport, setModalExport] = useState<AcaoExport | null>(null)
+  const [exportLogin, setExportLogin] = useState('')
+  const [exportSenha, setExportSenha] = useState('')
+  const [exportErro, setExportErro] = useState(false)
+  const [exportEtapa, setExportEtapa] = useState<'auth' | 'op'>('auth')
+  const [opRelatorio, setOpRelatorio] = useState('')
+  const [gerandoExport, setGerandoExport] = useState(false)
+  const [exportMensagem, setExportMensagem] = useState<string | null>(null)
+
   // Carrega OPs abertas do Supabase e escuta mudanças em tempo real
   useEffect(() => {
     async function carregar() {
@@ -259,6 +272,52 @@ export default function Home() {
   }
 
   function fecharModal() { setModalFecharOp(null); setAuthErro(false); setAuthSenha(''); setAuthLogin('') }
+
+  function fecharModalExport() {
+    setModalExport(null); setExportLogin(''); setExportSenha(''); setExportErro(false)
+    setExportEtapa('auth'); setOpRelatorio(''); setExportMensagem(null)
+  }
+
+  function verificarCredenciaisExport(): boolean {
+    const login = exportLogin.trim().toLowerCase()
+    if (login === 'qualidade' && exportSenha === 'pareto') return true
+    setExportErro(true); setExportSenha(''); return false
+  }
+
+  async function confirmarExport() {
+    if (!verificarCredenciaisExport()) return
+    if (modalExport === 'xlsx') {
+      setGerandoExport(true)
+      setExportMensagem('Buscando dados…')
+      try {
+        const { data } = await supabase.from('apontamentos').select('*').order('created_at', { ascending: true })
+        exportarXlsx(data ?? [])
+        fecharModalExport()
+      } catch { setExportMensagem('Erro ao exportar. Tente novamente.') }
+      finally { setGerandoExport(false) }
+    } else {
+      // PDF: vai para etapa de informar a OP
+      setExportEtapa('op')
+    }
+  }
+
+  async function gerarPDF() {
+    const numero = opRelatorio.trim().toUpperCase()
+    if (!numero) { setExportMensagem('Informe o número da OP.'); return }
+    setGerandoExport(true)
+    setExportMensagem('Buscando dados da OP…')
+    try {
+      const [{ data: aps }, { data: tempos }] = await Promise.all([
+        supabase.from('apontamentos').select('*').eq('numero_op', numero).order('created_at', { ascending: true }),
+        supabase.from('tempos_retrabalho_polimento').select('tempo_ms, custo_hh').eq('numero_op', numero),
+      ])
+      if (!aps || aps.length === 0) { setExportMensagem(`Nenhum apontamento encontrado para a OP ${numero}.`); return }
+      setExportMensagem('Gerando PDF…')
+      await gerarRelatorioPDF(aps, tempos ?? [], numero)
+      fecharModalExport()
+    } catch (e) { setExportMensagem(e instanceof Error ? e.message : 'Erro ao gerar PDF.') }
+    finally { setGerandoExport(false) }
+  }
 
   function selecionarOp(op: OP) {
     if (opAtiva?.numero === op.numero) return
@@ -444,6 +503,37 @@ export default function Home() {
               }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
               Abrir Nova OP
+            </button>
+
+            {/* Separador */}
+            <div style={{ height: 1, background: 'var(--line)', margin: '2px 0' }} />
+
+            {/* Botão XLSX */}
+            <button onClick={() => { setModalExport('xlsx'); setExportEtapa('auth') }}
+              className="rounded-xl p-3 flex items-center gap-2.5 font-semibold text-sm transition-all active:scale-[0.97]"
+              style={{ background: '#fff', border: '1px solid var(--line)', color: 'var(--text-body)', fontFamily: 'var(--font-display)' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                <line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="16" y2="17" /><line x1="8" y1="9" x2="10" y2="9" />
+              </svg>
+              <span>Exportar .xlsx</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="ml-auto">
+                <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+            </button>
+
+            {/* Botão PDF */}
+            <button onClick={() => { setModalExport('pdf'); setExportEtapa('auth') }}
+              className="rounded-xl p-3 flex items-center gap-2.5 font-semibold text-sm transition-all active:scale-[0.97]"
+              style={{ background: '#fff', border: '1px solid var(--line)', color: 'var(--text-body)', fontFamily: 'var(--font-display)' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                <path d="M9 15v-4h6v4" /><line x1="9" y1="11" x2="15" y2="11" />
+              </svg>
+              <span>Relatório PDF</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="ml-auto">
+                <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
             </button>
           </div>
         </div>
@@ -643,6 +733,75 @@ export default function Home() {
                 onSalvar={handleSalvar}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: exportação (xlsx / pdf) ───────────────────────────────── */}
+      {modalExport && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ background: 'rgba(31,55,68,0.55)', backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-sm flex flex-col gap-5 p-6 rounded-2xl"
+            style={{ background: '#fff', boxShadow: '0 30px 80px -10px rgba(15,35,50,0.4)' }}>
+
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: modalExport === 'xlsx' ? '#dcfce7' : '#fee2e2' }}>
+                  {modalExport === 'xlsx'
+                    ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="16" y2="17" /></svg>
+                    : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                  }
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
+                    {modalExport === 'xlsx' ? 'Exportar XLSX' : 'Relatório PDF'}
+                  </h2>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {exportEtapa === 'auth' ? 'Autenticação necessária' : 'Informe o número da OP'}
+                  </p>
+                </div>
+              </div>
+              <button onClick={fecharModalExport} disabled={gerandoExport}
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: 'var(--bg-page)', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            {/* Etapa: autenticação */}
+            {exportEtapa === 'auth' && (
+              <div className="flex flex-col gap-3">
+                <CampoAuth label="Login" value={exportLogin} onChange={v => { setExportLogin(v); setExportErro(false) }} placeholder="qualidade" />
+                <CampoAuth label="Senha" type="password" value={exportSenha} onChange={v => { setExportSenha(v); setExportErro(false) }} placeholder="••••••" />
+                {exportErro && <p className="text-sm text-center font-semibold" style={{ color: 'var(--signal-red)' }}>Login ou senha incorretos</p>}
+                {exportMensagem && <p className="text-sm text-center" style={{ color: 'var(--text-muted)' }}>{exportMensagem}</p>}
+                <button onClick={confirmarExport} disabled={gerandoExport}
+                  className="w-full font-bold py-3.5 rounded-xl transition-all active:scale-[0.97] disabled:opacity-50 mt-1"
+                  style={{ background: 'var(--brand-primary)', color: '#fff', fontFamily: 'var(--font-display)' }}>
+                  {gerandoExport ? 'Aguarde…' : 'Confirmar →'}
+                </button>
+              </div>
+            )}
+
+            {/* Etapa: número da OP (só PDF) */}
+            {exportEtapa === 'op' && (
+              <div className="flex flex-col gap-3">
+                <TecladoNumerico
+                  label="Número da OP para o relatório"
+                  valor={opRelatorio}
+                  onChange={v => { setOpRelatorio(v); setExportMensagem(null) }}
+                  placeholder="ex: 26000369"
+                  maxLength={9}
+                  onEnter={gerarPDF}
+                />
+                {exportMensagem && <p className="text-sm text-center font-semibold" style={{ color: exportMensagem.startsWith('Nenhum') ? 'var(--signal-red)' : 'var(--text-muted)' }}>{exportMensagem}</p>}
+                <button onClick={gerarPDF} disabled={gerandoExport || !opRelatorio.trim()}
+                  className="w-full font-bold py-3.5 rounded-xl transition-all active:scale-[0.97] disabled:opacity-50"
+                  style={{ background: '#ef4444', color: '#fff', fontFamily: 'var(--font-display)' }}>
+                  {gerandoExport ? 'Gerando PDF…' : 'Gerar Relatório PDF'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
