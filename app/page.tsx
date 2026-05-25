@@ -284,84 +284,6 @@ export default function Home() {
 
   if (carregando) return <div className="min-h-screen" style={{ background: 'var(--bg-page)' }} />
 
-  // ── Tela: abrir OP ─────────────────────────────────────────────────────────
-  if (ops.length === 0 || abrindoNovaOp) {
-    return (
-      <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-page)' }}>
-        <Navegacao />
-        <main className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full flex flex-col gap-4 mt-4">
-          {abrindoNovaOp && (
-            <button onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP(''); setNovaFibra(null); setNovoTamanhoOp('') }}
-              className="text-sm self-start flex items-center gap-1 transition-colors"
-              style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
-              ← Cancelar
-            </button>
-          )}
-          <div className="rounded-2xl p-6 flex flex-col gap-6"
-            style={{ background: '#fff', border: '1px solid var(--line)', boxShadow: '0 1px 4px rgba(31,55,68,0.06)' }}>
-            <div className="text-center">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center"
-                style={{ background: 'var(--brand-primary-soft)' }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 20V11l5 3V11l5 3V7l8 5v8H3z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-extrabold"
-                style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
-                {abrindoNovaOp ? 'Nova Ordem de Produção' : 'Abrir Ordem de Produção'}
-              </h2>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                Informe o número da OP para começar os apontamentos
-              </p>
-            </div>
-            <TecladoNumerico label="Número da Ordem de Produção (OP)" valor={novoNumeroOP} onChange={setNovoNumeroOP}
-              placeholder="ex: 000123456" maxLength={9} onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }} />
-            <div className="flex flex-col gap-3">
-              <p className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
-                Tipo de Fibra
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {(['F272', 'F365'] as TipoFibra[]).map(f => (
-                  <button key={f} type="button" onClick={() => setNovaFibra(f)}
-                    className="py-5 rounded-xl font-bold text-lg transition-all active:scale-[0.97]"
-                    style={{
-                      background: novaFibra === f ? 'var(--brand-primary)' : '#fff',
-                      color: novaFibra === f ? '#fff' : 'var(--text-strong)',
-                      border: `2px solid ${novaFibra === f ? 'var(--brand-primary)' : 'var(--line)'}`,
-                      fontFamily: 'var(--font-display)',
-                      boxShadow: novaFibra === f ? '0 4px 14px rgba(86,164,187,0.3)' : 'none',
-                    }}>
-                    Fibra {f === 'F272' ? '272' : '365'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Separador */}
-            <div style={{ height: 1, background: 'var(--line)' }} />
-
-            <TecladoNumerico
-              label="Tamanho da OP (total de peças)"
-              valor={novoTamanhoOp}
-              onChange={setNovoTamanhoOp}
-              placeholder="ex: 5000"
-              maxLength={7}
-              onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }}
-            />
-
-            <button onClick={confirmarNovaOp} disabled={!podeSalvarOp()}
-              className="font-bold text-xl py-5 rounded-xl transition-all active:scale-[0.97] disabled:opacity-40"
-              style={{
-                background: 'var(--brand-primary)', color: '#fff', fontFamily: 'var(--font-display)',
-                boxShadow: podeSalvarOp() ? '0 4px 14px rgba(86,164,187,0.3)' : 'none',
-              }}>
-              Iniciar Apontamentos →
-            </button>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
   // ── Cockpit ────────────────────────────────────────────────────────────────
   const CORES_GRUPO: Record<string, string> = {
     'Polimento': 'var(--brand-primary)',
@@ -396,74 +318,89 @@ export default function Home() {
               <circle cx="110" cy="110" r="30" stroke="#fff" strokeWidth="1" fill="none" />
             </svg>
 
-            <div className="relative flex gap-6">
-              {/* Esquerda: identidade + métricas */}
-              <div className="flex-1">
-                {/* Badge OP ATIVA */}
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
-                    style={{ background: 'rgba(156,229,238,0.16)', color: 'var(--brand-tecno)', fontFamily: 'var(--font-mono)' }}>
-                    OP ATIVA
-                  </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--font-mono)' }}>
-                    HOJE: {metricas.total} APONTAMENTO{metricas.total !== 1 ? 'S' : ''}
-                  </span>
-                </div>
-
-                {/* Número da OP + fibra */}
-                <div className="flex items-baseline gap-4">
-                  <span className="font-bold text-white"
-                    style={{ fontFamily: 'var(--font-mono)', fontSize: 32, letterSpacing: '-0.03em' }}>
-                    {opAtiva!.numero}
-                  </span>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
-                    Fibra{' '}
-                    <strong style={{ color: 'var(--brand-tecno)', fontWeight: 700 }}>
-                      {opAtiva!.fibra === 'F272' ? '272' : '365'}
-                    </strong>
-                  </span>
-                </div>
-
-                {/* Sub métricas */}
-                <div className="flex gap-7 mt-4">
-                  <MetricaMini label="Apontamentos" valor={String(metricas.total)} />
-                  <MetricaMini label="Tempo Retrabalho"
-                    valor={metricas.tempoTotal > 0 ? `${metricas.tempoTotal} min` : '—'} />
-                  {opAtiva!.tamanho && (
-                    <MetricaMini label="Tamanho da OP" valor={opAtiva!.tamanho.toLocaleString('pt-BR') + ' pç'} />
-                  )}
-                </div>
-              </div>
-
-              {/* Direita: botões de ação */}
-              <div className="flex flex-col gap-2 w-52 shrink-0">
-                <button onClick={() => setApontamentoOpen(true)}
-                  className="flex items-center justify-between px-4 py-4 rounded-xl font-bold transition-all active:scale-[0.97]"
+            {opAtiva === null ? (
+              <div className="relative flex flex-col items-center justify-center flex-1 gap-3 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
+                  style={{ background: 'rgba(156,229,238,0.16)', color: 'var(--brand-tecno)', fontFamily: 'var(--font-mono)' }}>
+                  NENHUMA OP EM ANDAMENTO
+                </span>
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  Abra uma Ordem de Produção para começar
+                </p>
+                <button onClick={() => setAbrindoNovaOp(true)}
+                  className="flex items-center gap-2 px-5 py-3.5 rounded-xl font-bold transition-all active:scale-[0.97] mt-1"
                   style={{
                     background: 'var(--brand-tecno)', color: 'var(--brand-deep)',
                     fontFamily: 'var(--font-display)', fontSize: 14,
-                    boxShadow: '0 4px 14px rgba(156,229,238,0.25), 0 1px 0 rgba(255,255,255,0.5) inset',
+                    boxShadow: '0 4px 14px rgba(156,229,238,0.25)',
                   }}>
-                  <span>+ Novo Apontamento</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                </button>
-
-                <button
-                  onClick={() => solicitarFechamentoOp(opAtiva!.numero)}
-                  className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-semibold transition-all active:scale-[0.97]"
-                  style={{
-                    background: 'transparent', color: 'rgba(255,255,255,0.55)',
-                    border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'var(--font-display)', fontSize: 13,
-                  }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                    <circle cx="12" cy="16" r="1" fill="currentColor" stroke="none" />
-                  </svg>
-                  <span>Finalizar / Cancelar OP</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                  Abrir Ordem de Produção
                 </button>
               </div>
-            </div>
+            ) : (
+              <div className="relative flex gap-6">
+                {/* Esquerda: identidade + métricas */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
+                      style={{ background: 'rgba(156,229,238,0.16)', color: 'var(--brand-tecno)', fontFamily: 'var(--font-mono)' }}>
+                      OP ATIVA
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--font-mono)' }}>
+                      HOJE: {metricas.total} APONTAMENTO{metricas.total !== 1 ? 'S' : ''}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-4">
+                    <span className="font-bold text-white"
+                      style={{ fontFamily: 'var(--font-mono)', fontSize: 32, letterSpacing: '-0.03em' }}>
+                      {opAtiva.numero}
+                    </span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                      Fibra{' '}
+                      <strong style={{ color: 'var(--brand-tecno)', fontWeight: 700 }}>
+                        {opAtiva.fibra === 'F272' ? '272' : '365'}
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="flex gap-7 mt-4">
+                    <MetricaMini label="Apontamentos" valor={String(metricas.total)} />
+                    <MetricaMini label="Tempo Retrabalho"
+                      valor={metricas.tempoTotal > 0 ? `${metricas.tempoTotal} min` : '—'} />
+                    {opAtiva.tamanho && (
+                      <MetricaMini label="Tamanho da OP" valor={opAtiva.tamanho.toLocaleString('pt-BR') + ' pç'} />
+                    )}
+                  </div>
+                </div>
+
+                {/* Direita: botões de ação */}
+                <div className="flex flex-col gap-2 w-52 shrink-0">
+                  <button onClick={() => setApontamentoOpen(true)}
+                    className="flex items-center justify-between px-4 py-4 rounded-xl font-bold transition-all active:scale-[0.97]"
+                    style={{
+                      background: 'var(--brand-tecno)', color: 'var(--brand-deep)',
+                      fontFamily: 'var(--font-display)', fontSize: 14,
+                      boxShadow: '0 4px 14px rgba(156,229,238,0.25), 0 1px 0 rgba(255,255,255,0.5) inset',
+                    }}>
+                    <span>+ Novo Apontamento</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                  </button>
+                  <button onClick={() => solicitarFechamentoOp(opAtiva.numero)}
+                    className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-semibold transition-all active:scale-[0.97]"
+                    style={{
+                      background: 'transparent', color: 'rgba(255,255,255,0.55)',
+                      border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'var(--font-display)', fontSize: 13,
+                    }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                      <circle cx="12" cy="16" r="1" fill="currentColor" stroke="none" />
+                    </svg>
+                    <span>Finalizar / Cancelar OP</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Painel: Outras OPs */}
@@ -614,6 +551,58 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* ── Sheet: abrir nova OP ─────────────────────────────────────────── */}
+      {abrindoNovaOp && (
+        <div className="fixed inset-0 z-40 flex flex-col" style={{ background: 'var(--bg-page)', animation: 'slideUp 350ms cubic-bezier(0.2,0.8,0.2,1)' }}>
+          <div className="flex items-center gap-4 px-6 py-4 shrink-0"
+            style={{ background: '#fff', borderBottom: '1px solid var(--line)' }}>
+            <button onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP(''); setNovaFibra(null); setNovoTamanhoOp('') }}
+              className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-[0.97]"
+              style={{ background: '#fff', border: '1px solid var(--line)', color: 'var(--text-body)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+            </button>
+            <span className="font-extrabold text-xl" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
+              Nova Ordem de Produção
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 max-w-lg mx-auto w-full flex flex-col gap-6">
+            <TecladoNumerico label="Número da Ordem de Produção (OP)" valor={novoNumeroOP} onChange={setNovoNumeroOP}
+              placeholder="ex: 000123456" maxLength={9} onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }} />
+            <div className="flex flex-col gap-3">
+              <p className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                Tipo de Fibra
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {(['F272', 'F365'] as TipoFibra[]).map(f => (
+                  <button key={f} type="button" onClick={() => setNovaFibra(f)}
+                    className="py-5 rounded-xl font-bold text-lg transition-all active:scale-[0.97]"
+                    style={{
+                      background: novaFibra === f ? 'var(--brand-primary)' : '#fff',
+                      color: novaFibra === f ? '#fff' : 'var(--text-strong)',
+                      border: `2px solid ${novaFibra === f ? 'var(--brand-primary)' : 'var(--line)'}`,
+                      fontFamily: 'var(--font-display)',
+                      boxShadow: novaFibra === f ? '0 4px 14px rgba(86,164,187,0.3)' : 'none',
+                    }}>
+                    Fibra {f === 'F272' ? '272' : '365'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ height: 1, background: 'var(--line)' }} />
+            <TecladoNumerico label="Tamanho da OP (total de peças)" valor={novoTamanhoOp} onChange={setNovoTamanhoOp}
+              placeholder="ex: 5000" maxLength={7} onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }} />
+            <button onClick={confirmarNovaOp} disabled={!podeSalvarOp()}
+              className="font-bold text-xl py-5 rounded-xl transition-all active:scale-[0.97] disabled:opacity-40"
+              style={{
+                background: 'var(--brand-primary)', color: '#fff', fontFamily: 'var(--font-display)',
+                boxShadow: podeSalvarOp() ? '0 4px 14px rgba(86,164,187,0.3)' : 'none',
+              }}>
+              Iniciar Apontamentos →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Sheet: formulário de apontamento ─────────────────────────────── */}
       {apontamentoOpen && (
