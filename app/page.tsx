@@ -1,33 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import FormularioApontamento from '@/components/FormularioApontamento'
-import { salvarApontamento, cancelarOP } from './actions'
+import { salvarApontamento, cancelarOP, abrirOP, fecharOP } from './actions'
 import type { NovoApontamento, TipoFibra, Apontamento } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
 import TecladoNumerico from '@/components/TecladoNumerico'
 import { supabase } from '@/lib/supabase'
 
-const STORAGE_KEY = 'kaizen-ops-abertas'
-
 interface OP { numero: string; fibra: TipoFibra; tamanho?: number }
-
-function carregarDoStorage(): { ops: OP[]; opAtiva: OP | null } {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { ops: [], opAtiva: null }
-    const parsed = JSON.parse(raw)
-    const ops: OP[] = (Array.isArray(parsed?.ops) ? parsed.ops : []).filter((o: unknown) =>
-      o !== null && typeof o === 'object' &&
-      typeof (o as Record<string, unknown>).numero === 'string' &&
-      ((o as Record<string, unknown>).fibra === 'F272' || (o as Record<string, unknown>).fibra === 'F365')
-    )
-    if (ops.length === 0) return { ops: [], opAtiva: null }
-    const savedAtiva: OP | null = parsed?.opAtiva ?? null
-    const opAtiva = savedAtiva && ops.some(o => o.numero === savedAtiva.numero) ? savedAtiva : ops[0]
-    return { ops, opAtiva }
-  } catch { return { ops: [], opAtiva: null } }
-}
 
 // ─── Helpers de gráfico (curva Catmull-Rom) ───────────────────────────────────
 function catmullRom(pts: [number, number][]): string {
@@ -170,17 +151,35 @@ export default function Home() {
   const [dadosHoje, setDadosHoje] = useState<Apontamento[]>([])
   const [carregandoDados, setCarregandoDados] = useState(false)
 
-  const persistindoAtivo = useRef(false)
-
+  // Carrega OPs abertas do Supabase e escuta mudanças em tempo real
   useEffect(() => {
-    const { ops: s, opAtiva: a } = carregarDoStorage()
-    setOps(s); setOpAtiva(a); setCarregando(false); persistindoAtivo.current = true
+    async function carregar() {
+      const { data } = await supabase.from('ops_abertas').select('*').order('criada_em', { ascending: true })
+      const lista: OP[] = (data ?? []).map(d => ({ numero: d.numero, fibra: d.fibra as TipoFibra, tamanho: d.tamanho ?? undefined }))
+      setOps(lista)
+      setCarregando(false)
+    }
+    carregar()
+
+    const channel = supabase.channel('ops_abertas_sync')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ops_abertas' }, payload => {
+        const nova: OP = { numero: payload.new.numero, fibra: payload.new.fibra as TipoFibra, tamanho: payload.new.tamanho ?? undefined }
+        setOps(prev => prev.some(o => o.numero === nova.numero) ? prev : [...prev, nova])
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'ops_abertas' }, payload => {
+        const removida = payload.old.numero as string
+        setOps(prev => prev.filter(o => o.numero !== removida))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
+  // Garante que opAtiva sempre aponta para uma OP existente
   useEffect(() => {
-    if (!persistindoAtivo.current) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ops, opAtiva }))
-  }, [ops, opAtiva])
+    if (ops.length === 0) { setOpAtiva(null); return }
+    setOpAtiva(curr => (curr && ops.some(o => o.numero === curr.numero)) ? curr : ops[0])
+  }, [ops])
 
   // Busca apontamentos de hoje para o cockpit
   useEffect(() => {
@@ -209,11 +208,18 @@ export default function Home() {
 
   function podeSalvarOp() { return novoNumeroOP.trim().length > 0 && novaFibra !== null && parseInt(novoTamanhoOp || '0') > 0 }
 
-  function confirmarNovaOp() {
+  async function confirmarNovaOp() {
     if (!podeSalvarOp() || !novaFibra) return
     const nova: OP = { numero: novoNumeroOP.trim().toUpperCase(), fibra: novaFibra, tamanho: parseInt(novoTamanhoOp) || undefined }
-    setOps(prev => [...prev.filter(o => o.numero !== nova.numero), nova])
-    setOpAtiva(nova)
+    try {
+      await abrirOP({ numero: nova.numero, fibra: nova.fibra, tamanho: nova.tamanho })
+      // Atualização otimista: não espera o evento realtime para selecionar neste dispositivo
+      setOps(prev => prev.some(o => o.numero === nova.numero) ? prev : [...prev, nova])
+      setOpAtiva(nova)
+    } catch {
+      setErro('Erro ao abrir OP. Tente novamente.')
+      return
+    }
     setNovoNumeroOP(''); setNovaFibra(null); setNovoTamanhoOp(''); setAbrindoNovaOp(false); setFormKey(k => k + 1)
   }
 
@@ -235,7 +241,14 @@ export default function Home() {
     setModalFecharOp(null)
   }
 
-  function finalizarOP() { if (!verificarCredenciais()) return; removerOpLocal(modalFecharOp!) }
+  async function finalizarOP() {
+    if (!verificarCredenciais()) return
+    const numero = modalFecharOp!
+    setProcessando(true)
+    try { await fecharOP(numero); removerOpLocal(numero) }
+    catch { setAuthErro(false) }
+    finally { setProcessando(false) }
+  }
 
   async function handleCancelarOP() {
     if (!verificarCredenciais()) return

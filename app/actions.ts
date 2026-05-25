@@ -1,10 +1,24 @@
 'use server'
 
 import { supabase } from '@/lib/supabase'
-import type { NovoApontamento, NovaCEPColeta, RascunhoCEP } from '@/lib/types'
+import type { NovoApontamento, NovaCEPColeta, RascunhoCEP, TipoFibra } from '@/lib/types'
 
 export async function salvarApontamento(dados: NovoApontamento) {
   const { error } = await supabase.from('apontamentos').insert(dados)
+  if (error) throw new Error(error.message)
+}
+
+export async function abrirOP(dados: { numero: string; fibra: TipoFibra; tamanho?: number }) {
+  const { error } = await supabase.from('ops_abertas').upsert({
+    numero: dados.numero,
+    fibra: dados.fibra,
+    tamanho: dados.tamanho ?? null,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function fecharOP(numero: string) {
+  const { error } = await supabase.from('ops_abertas').delete().eq('numero', numero)
   if (error) throw new Error(error.message)
 }
 
@@ -53,13 +67,12 @@ export async function buscarRascunhosCEP(): Promise<RascunhoCEP[]> {
   return (data ?? []) as RascunhoCEP[]
 }
 
-// Cancela uma OP: apaga todos os apontamentos daquele número de OP
+// Cancela uma OP: apaga todos os apontamentos e remove da lista de OPs abertas
 export async function cancelarOP(numero_op: string) {
-  const { error } = await supabase
-    .from('apontamentos')
-    .delete()
-    .eq('numero_op', numero_op)
+  const { error } = await supabase.from('apontamentos').delete().eq('numero_op', numero_op)
   if (error) throw new Error(error.message)
+  const { error: e2 } = await supabase.from('ops_abertas').delete().eq('numero', numero_op)
+  if (e2) throw new Error(e2.message)
 }
 
 // Exclui uma coleta (rascunho ou finalizada) pelo ID
