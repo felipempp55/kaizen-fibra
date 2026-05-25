@@ -75,6 +75,15 @@ const fmtDia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day:
 const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 const R = (v: number) => formatarReal(v)
 
+function formatTempoMs(ms: number): string {
+  const totalMin = Math.floor(ms / 60000)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h > 0) return `${h}h ${m}min`
+  if (totalMin > 0) return `${totalMin}min`
+  return `${Math.floor(ms / 1000)}s`
+}
+
 // ─── Tela de login ────────────────────────────────────────────────────────────
 
 function LoginDashboard({ onSuccess }: { onSuccess: () => void }) {
@@ -202,6 +211,7 @@ export default function DashboardPage() {
   const [ini, setIni] = useState('')
   const [fim, setFim] = useState('')
   const [dados, setDados] = useState<Apontamento[]>([])
+  const [temposRetrabalho, setTemposRetrabalho] = useState<{ tempo_ms: number; custo_hh: number }[]>([])
   const [carregando, setCarregando] = useState(true)
   const [aba, setAba] = useState<Aba>('producao')
   const [filtroOp, setFiltroOp] = useState<'atual' | 'anterior' | null>(null)
@@ -224,16 +234,21 @@ export default function DashboardPage() {
   const buscar = useCallback(async () => {
     setCarregando(true)
     let query = supabase.from('apontamentos').select('*').order('created_at', { ascending: true })
+    let queryTempos = supabase.from('tempos_retrabalho_polimento').select('tempo_ms, custo_hh')
     if (filtroOp !== null && opsRecentes.length > 0) {
       const opNumero = filtroOp === 'atual' ? opsRecentes[0] : opsRecentes[1]
-      if (opNumero) query = query.eq('numero_op', opNumero)
-      else { setDados([]); setCarregando(false); return }
+      if (opNumero) {
+        query = query.eq('numero_op', opNumero)
+        queryTempos = queryTempos.eq('numero_op', opNumero)
+      } else { setDados([]); setTemposRetrabalho([]); setCarregando(false); return }
     } else {
       const { de, ate } = getIntervalo(periodo, ini, fim)
       query = query.gte('created_at', de).lte('created_at', ate)
+      queryTempos = queryTempos.gte('created_at', de).lte('created_at', ate)
     }
-    const { data } = await query
+    const [{ data }, { data: dataTempos }] = await Promise.all([query, queryTempos])
     setDados(data ?? [])
+    setTemposRetrabalho(dataTempos ?? [])
     setCarregando(false)
   }, [periodo, ini, fim, filtroOp, opsRecentes])
 
@@ -600,6 +615,76 @@ export default function DashboardPage() {
                 cor="var(--signal-green)"
               />
             </div>
+
+            {/* ── Card: Retrabalho Manual Polimento ───────────────────────── */}
+            {(() => {
+              const totalMs = temposRetrabalho.reduce((s, t) => s + t.tempo_ms, 0)
+              const totalCusto = temposRetrabalho.reduce((s, t) => s + t.custo_hh, 0)
+              const sessoes = temposRetrabalho.length
+              return (
+                <div
+                  className="rounded-2xl p-5 flex flex-col gap-4"
+                  style={{
+                    background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                    border: '1.5px solid #fcd34d',
+                    boxShadow: '0 1px 4px rgba(180,130,0,0.08)',
+                  }}
+                >
+                  {/* Cabeçalho */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#fcd34d' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#92400e', fontFamily: 'var(--font-mono)' }}>
+                          RETRABALHO MANUAL · POLIMENTO
+                        </p>
+                        <p className="text-[10px]" style={{ color: '#b45309' }}>
+                          {sessoes === 0 ? 'Nenhuma sessão no período' : `${sessoes} sessão${sessoes !== 1 ? 'ões' : ''} registrada${sessoes !== 1 ? 's' : ''} no período`}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d', fontFamily: 'var(--font-mono)' }}>
+                      R$ 17,00 / h · HH
+                    </span>
+                  </div>
+
+                  {/* Métricas */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-xl p-4 flex flex-col gap-1" style={{ background: 'rgba(255,255,255,0.7)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#92400e', fontFamily: 'var(--font-mono)' }}>
+                        ⏱ Tempo Total
+                      </p>
+                      <p className="text-3xl font-extrabold leading-none" style={{ color: '#78350f', fontFamily: 'var(--font-display)' }}>
+                        {sessoes === 0 ? '—' : formatTempoMs(totalMs)}
+                      </p>
+                      {sessoes > 0 && (
+                        <p className="text-[10px]" style={{ color: '#b45309' }}>
+                          ≈ {(totalMs / 3600000).toFixed(2)} horas
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl p-4 flex flex-col gap-1" style={{ background: 'rgba(255,255,255,0.7)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#92400e', fontFamily: 'var(--font-mono)' }}>
+                        💰 Custo Hora Homem
+                      </p>
+                      <p className="text-3xl font-extrabold leading-none" style={{ color: '#78350f', fontFamily: 'var(--font-display)' }}>
+                        {sessoes === 0 ? '—' : R(totalCusto)}
+                      </p>
+                      {sessoes > 0 && (
+                        <p className="text-[10px]" style={{ color: '#b45309' }}>
+                          média {R(totalCusto / sessoes)} / sessão
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* ── Linha 2: Área + Top Operadoras ──────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

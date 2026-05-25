@@ -34,6 +34,7 @@ function formatMs(ms: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+import { salvarTempoRetrabalhoPolimento } from '@/app/actions'
 import { GRUPOS_DESPERDICIO } from '@/lib/desperdicios'
 import type { Classificacao, NovoApontamento, TipoDesperdicio, TipoFibra } from '@/lib/types'
 import EtapaIndicador from './EtapaIndicador'
@@ -112,8 +113,22 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
     const novo: TimerState = { status: 'pausado', elapsed, startAt: null }
     setTimer(novo); saveTimer(novo)
   }
-  function concluirTimer() {
-    setTimer(TIMER_INICIAL); saveTimer(TIMER_INICIAL)
+  async function concluirTimer() {
+    // Captura o tempo final (mesmo se ainda estava rodando)
+    const finalMs = timer.status === 'rodando' && timer.startAt != null
+      ? timer.elapsed + (Date.now() - timer.startAt)
+      : timer.elapsed
+
+    if (finalMs >= 1000) { // só salva se tiver pelo menos 1 segundo
+      const tempo_minutos = parseFloat((finalMs / 60000).toFixed(2))
+      const custo_hh = parseFloat(((finalMs / 3600000) * 17).toFixed(2))
+      try {
+        await salvarTempoRetrabalhoPolimento({ numero_op: op, tempo_ms: finalMs, tempo_minutos, custo_hh })
+      } catch { /* não bloqueia o reset em caso de erro */ }
+    }
+
+    setTimer(TIMER_INICIAL)
+    saveTimer(TIMER_INICIAL)
   }
 
   // ── Formulário ───────────────────────────────────────────────────────────────

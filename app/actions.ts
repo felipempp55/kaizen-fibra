@@ -22,6 +22,16 @@ export async function fecharOP(numero: string) {
   if (error) throw new Error(error.message)
 }
 
+export async function salvarTempoRetrabalhoPolimento(dados: {
+  numero_op: string
+  tempo_ms: number
+  tempo_minutos: number
+  custo_hh: number
+}) {
+  const { error } = await supabase.from('tempos_retrabalho_polimento').insert(dados)
+  if (error) throw new Error(error.message)
+}
+
 // Salva coleta finalizada (nova ou atualizando um rascunho existente)
 export async function salvarCEP(dados: NovaCEPColeta, rascunhoId?: string) {
   if (rascunhoId) {
