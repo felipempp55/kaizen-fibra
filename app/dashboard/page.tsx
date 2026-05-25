@@ -389,7 +389,6 @@ export default function DashboardPage() {
       { dia: 'QUI', v: mTurno.get(4) ?? 0 },
       { dia: 'SEX', v: mTurno.get(5) ?? 0 },
       { dia: 'SAB', v: mTurno.get(6) ?? 0 },
-      { dia: 'DOM', v: mTurno.get(0) ?? 0 },
     ]
 
     // ── Sparklines (últimos N dias, contagem de apontamentos) ──────────────
