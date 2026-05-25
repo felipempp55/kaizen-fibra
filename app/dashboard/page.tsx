@@ -253,7 +253,7 @@ export default function DashboardPage() {
     const custoTotal = ricos.reduce((s, a) => s + a.custo, 0)
     const totalPecas = dados.reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
     const totalTempo = dados.reduce((s, a) => s + (a.tempo_minutos ?? 0), 0)
-    const operadoras = new Set(dados.map(a => a.nome_operador))
+    const operadoras = new Set(dados.map(a => a.nome_operador.trim().toLowerCase()))
     const ops = new Set(dados.map(a => a.numero_op))
 
     // Peças efetivamente perdidas (por tipo)
@@ -307,12 +307,14 @@ export default function DashboardPage() {
     const paretoOcorrencias = pareto(porTipo.map(t => ({ nome: t.nome, valor: t.Apontamentos })))
 
     // ── Por operadora ──────────────────────────────────────────────────────
+    const nomeDisplay = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase())
     type OpE = { nome: string; Apontamentos: number; Custo: number }
     const mOp = new Map<string, OpE>()
     ricos.forEach(a => {
-      const n = a.nome_operador || '—'
-      if (!mOp.has(n)) mOp.set(n, { nome: n, Apontamentos: 0, Custo: 0 })
-      const o = mOp.get(n)!; o.Apontamentos++; o.Custo += a.custo
+      const key = (a.nome_operador || '—').trim().toLowerCase()
+      const display = a.nome_operador ? nomeDisplay(a.nome_operador) : '—'
+      if (!mOp.has(key)) mOp.set(key, { nome: display, Apontamentos: 0, Custo: 0 })
+      const o = mOp.get(key)!; o.Apontamentos++; o.Custo += a.custo
     })
     const porOperadora = Array.from(mOp.values()).sort((a, b) => b.Apontamentos - a.Apontamentos)
     const porOperadoraCusto = [...porOperadora].sort((a, b) => b.Custo - a.Custo)
