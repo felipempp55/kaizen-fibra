@@ -784,7 +784,7 @@ export default function DashboardPage() {
               </Painel>
 
               {/* Barras verticais — Por Turno (dia da semana) */}
-              <Painel titulo="Por Turno">
+              <Painel titulo="Por Dia da Semana">
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={dp.porTurno} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" vertical={false} />
