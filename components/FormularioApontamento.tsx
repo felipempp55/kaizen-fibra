@@ -478,7 +478,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
 
       {/* ── QUANTIDADE — contador simples ──────────────────────────────── */}
       {etapaAtual === 'quantidade' && tipoSelecionado?.input === 'contador' && (
-        <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-5">
           <p
             className="text-base font-semibold text-center"
             style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}
@@ -502,30 +502,34 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
             </span>
           </div>
 
-          {/* Botão +1 */}
-          <button
-            onClick={() => {
-              const atual = parseInt(quantidade || '0')
-              if (atual < 9999) setQuantidade(String(atual + 1))
-            }}
-            className="w-full font-black text-5xl py-10 rounded-2xl transition-all active:scale-[0.97] shadow-md select-none"
-            style={{ background: 'var(--brand-primary)', color: '#fff', fontFamily: 'var(--font-display)' }}
-          >
-            +1
-          </button>
-
-          {Number(quantidade || 0) > 0 && (
+          {/* Botões −1 / +1 */}
+          <div className="flex gap-3 w-full">
             <button
               onClick={() => {
                 const atual = parseInt(quantidade || '0')
-                setQuantidade(atual > 1 ? String(atual - 1) : '')
+                if (atual > 0) setQuantidade(atual > 1 ? String(atual - 1) : '')
               }}
-              className="text-sm font-medium transition-colors"
-              style={{ color: 'var(--text-muted)' }}
+              className="font-bold text-xl px-5 py-4 rounded-xl transition-all active:scale-[0.97]"
+              style={{
+                background: '#fff',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--line)',
+                fontFamily: 'var(--font-display)',
+              }}
             >
-              ← Desfazer último
+              −1
             </button>
-          )}
+            <button
+              onClick={() => {
+                const atual = parseInt(quantidade || '0')
+                if (atual < 9999) setQuantidade(String(atual + 1))
+              }}
+              className="flex-1 font-black text-4xl py-4 rounded-xl transition-all active:scale-[0.97] shadow-md select-none"
+              style={{ background: 'var(--brand-primary)', color: '#fff', fontFamily: 'var(--font-display)' }}
+            >
+              +1
+            </button>
+          </div>
         </div>
       )}
 
