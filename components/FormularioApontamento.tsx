@@ -272,6 +272,8 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
                 onClick={() => {
                   setGrupoSelecionado(g.nome)
                   setTipoSelecionado(null)
+                  setQuantidade('')
+                  setSegundaQuantidade('')
                   avancar()
                 }}
               />
@@ -386,6 +388,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
               selecionado={tipoSelecionado?.nome === t.nome}
               onClick={() => {
                 setTipoSelecionado(t)
+                setQuantidade('')
                 setClassificacao(null)
                 setTempoMinutos('')
                 setSegundaQuantidade('')
