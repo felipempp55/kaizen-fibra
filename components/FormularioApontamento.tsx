@@ -122,9 +122,10 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
     if (finalMs >= 1000) { // só salva se tiver pelo menos 1 segundo
       const tempo_minutos = parseFloat((finalMs / 60000).toFixed(2))
       const custo_hh = parseFloat(((finalMs / 3600000) * 17).toFixed(2))
-      try {
-        await salvarTempoRetrabalhoPolimento({ numero_op: op, tempo_ms: finalMs, tempo_minutos, custo_hh })
-      } catch { /* não bloqueia o reset em caso de erro */ }
+      const r = await salvarTempoRetrabalhoPolimento({ numero_op: op, tempo_ms: finalMs, tempo_minutos, custo_hh })
+        .catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
+      if (!r.ok) console.error('[concluirTimer] Falha ao salvar tempo:', r.error)
+      // Não bloqueia o reset mesmo em caso de erro — o cronômetro precisa zerar para a operadora seguir
     }
 
     setTimer(TIMER_INICIAL)
@@ -167,21 +168,42 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
     if (!grupoSelecionado || !tipoSelecionado || !quantidade) return
     setSalvando(true)
     try {
+      // ── Sanitização defensiva: converte strings em números válidos OU null.
+      // Evita NaN, 0 indesejado em campos opcionais e bate-papo com check constraints.
+      const toIntOuNull = (s: string): number | null => {
+        if (!s || s.trim() === '') return null
+        const n = parseInt(s, 10)
+        return Number.isFinite(n) && n > 0 ? n : null
+      }
+      const toFloatOuNull = (s: string): number | null => {
+        if (!s || s.trim() === '') return null
+        const n = parseFloat(s.replace(',', '.'))
+        return Number.isFinite(n) && n > 0 ? n : null
+      }
+
+      const qPecas = tipoSelecionado.unidade === 'pecas' ? toIntOuNull(quantidade) : null
+      const qMl = tipoSelecionado.unidade === 'ml'
+        ? toFloatOuNull(quantidade)
+        : (tipoSelecionado.segunda_quantidade ? toIntOuNull(segundaQuantidade) : null)
+
+      // Garante que pelo menos uma quantidade não-nula esteja presente
+      if (qPecas === null && qMl === null) {
+        console.error('[confirmar] Quantidades invalidas:', { quantidade, segundaQuantidade })
+        setSalvando(false)
+        return
+      }
+
       const ok = await onSalvar({
         grupo: grupoSelecionado,
         tipo_desperdicio: tipoSelecionado.nome,
         nome_operador: operadoraSelecionada ?? operador,
         numero_op: op.toUpperCase(),
         fibra,
-        quantidade_pecas: tipoSelecionado.unidade === 'pecas' ? parseInt(quantidade) : null,
-        quantidade_ml: tipoSelecionado.unidade === 'ml'
-          ? parseFloat(quantidade.replace(',', '.'))
-          : (tipoSelecionado.segunda_quantidade && segundaQuantidade.trim() !== ''
-              ? parseInt(segundaQuantidade)
-              : null),
+        quantidade_pecas: qPecas,
+        quantidade_ml: qMl,
         classificacao: tipoSelecionado.classificacao_fixa
           ?? (tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null),
-        tempo_minutos: tempoMinutos ? parseInt(tempoMinutos) : null,
+        tempo_minutos: toIntOuNull(tempoMinutos),
         observacao: null,
         tamanho_op: tamanho ?? null,
       })

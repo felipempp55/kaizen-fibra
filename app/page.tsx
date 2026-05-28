@@ -224,15 +224,15 @@ export default function Home() {
   async function confirmarNovaOp() {
     if (!podeSalvarOp() || !novaFibra) return
     const nova: OP = { numero: novoNumeroOP.trim().toUpperCase(), fibra: novaFibra, tamanho: parseInt(novoTamanhoOp) || undefined }
-    try {
-      await abrirOP({ numero: nova.numero, fibra: nova.fibra, tamanho: nova.tamanho })
-      // Atualização otimista: não espera o evento realtime para selecionar neste dispositivo
-      setOps(prev => prev.some(o => o.numero === nova.numero) ? prev : [...prev, nova])
-      setOpAtiva(nova)
-    } catch {
-      setErro('Erro ao abrir OP. Tente novamente.')
+    const r = await abrirOP({ numero: nova.numero, fibra: nova.fibra, tamanho: nova.tamanho })
+      .catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
+    if (!r.ok) {
+      setErro(`Erro ao abrir OP: ${r.error}`)
       return
     }
+    // Atualização otimista: não espera o evento realtime para selecionar neste dispositivo
+    setOps(prev => prev.some(o => o.numero === nova.numero) ? prev : [...prev, nova])
+    setOpAtiva(nova)
     setNovoNumeroOP(''); setNovaFibra(null); setNovoTamanhoOp(''); setAbrindoNovaOp(false); setFormKey(k => k + 1)
   }
 
@@ -258,17 +258,20 @@ export default function Home() {
     if (!verificarCredenciais()) return
     const numero = modalFecharOp!
     setProcessando(true)
-    try { await fecharOP(numero); removerOpLocal(numero) }
-    catch { setAuthErro(false) }
-    finally { setProcessando(false) }
+    const r = await fecharOP(numero).catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
+    if (r.ok) removerOpLocal(numero)
+    else setErro(`Erro ao fechar OP: ${r.error}`)
+    setProcessando(false)
   }
 
   async function handleCancelarOP() {
     if (!verificarCredenciais()) return
-    const numero = modalFecharOp!; setProcessando(true)
-    try { await cancelarOP(numero); removerOpLocal(numero) }
-    catch { setAuthErro(false) }
-    finally { setProcessando(false) }
+    const numero = modalFecharOp!
+    setProcessando(true)
+    const r = await cancelarOP(numero).catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
+    if (r.ok) removerOpLocal(numero)
+    else setErro(`Erro ao cancelar OP: ${r.error}`)
+    setProcessando(false)
   }
 
   function fecharModal() { setModalFecharOp(null); setAuthErro(false); setAuthSenha(''); setAuthLogin('') }
@@ -708,7 +711,7 @@ export default function Home() {
       )}
 
       {/* ── Sheet: formulário de apontamento ─────────────────────────────── */}
-      {apontamentoOpen && (
+      {apontamentoOpen && opAtiva && (
         <div className="fixed inset-0 z-40 flex flex-col" style={{ background: 'var(--bg-page)', animation: 'slideUp 350ms cubic-bezier(0.2,0.8,0.2,1)' }}>
           {/* Header da sheet */}
           <div className="flex items-center gap-4 px-6 py-4 shrink-0"
@@ -739,10 +742,10 @@ export default function Home() {
             <div className="rounded-2xl p-5" style={{ background: '#fff', border: '1px solid var(--line)' }}>
               <FormularioApontamento
                 key={formKey}
-                op={opAtiva!.numero}
-                fibra={opAtiva!.fibra}
+                op={opAtiva.numero}
+                fibra={opAtiva.fibra}
                 operador=""
-                tamanho={opAtiva!.tamanho}
+                tamanho={opAtiva.tamanho}
                 onSalvar={handleSalvar}
               />
             </div>

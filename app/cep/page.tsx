@@ -62,16 +62,16 @@ export default function CEPPage() {
       return
     }
     setExcluindo(true)
-    try {
-      await excluirColetaCEP(modalExcluirId!)
+    const r = await excluirColetaCEP(modalExcluirId!)
+      .catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
+    if (r.ok) {
       setModalExcluirId(null)
       carregarRascunhos()
-    } catch {
-      setAuthErro(false)
+    } else {
+      setErro(`Erro ao excluir: ${r.error}`)
       setModalExcluirId(null)
-    } finally {
-      setExcluindo(false)
     }
+    setExcluindo(false)
   }
 
   function cancelarExclusao() {
@@ -116,26 +116,23 @@ export default function CEPPage() {
 
   async function handleSalvar(dados: NovaCEPColeta, rascunhoId?: string) {
     setErro(null)
-    try {
-      await salvarCEP(dados, rascunhoId)
+    const r = await salvarCEP(dados, rascunhoId)
+      .catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
+    if (r.ok) {
       voltar()
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.')
-      // não relança — o FormularioCEP mostra o erro da página
+    } else {
+      setErro(`Erro ao salvar: ${r.error}`)
     }
   }
 
   async function handlePausar(dados: NovaCEPColeta, rascunhoId?: string) {
     setErro(null)
-    try {
-      if (rascunhoId) {
-        await atualizarRascunhoCEP(rascunhoId, dados)
-      } else {
-        await salvarRascunhoCEP(dados)
-      }
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao pausar.')
-      // não relança — o FormularioCEP cuida do estado interno
+    const acao = rascunhoId
+      ? atualizarRascunhoCEP(rascunhoId, dados)
+      : salvarRascunhoCEP(dados)
+    const r = await acao.catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
+    if (!r.ok) {
+      setErro(`Erro ao pausar: ${r.error}`)
     }
   }
 
