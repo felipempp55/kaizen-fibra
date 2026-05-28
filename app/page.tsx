@@ -326,22 +326,30 @@ export default function Home() {
 
   async function handleSalvar(dados: NovoApontamento): Promise<boolean> {
     setErro(null)
+    // 1) INSERT: única operação crítica. Se falhar aqui, o apontamento NÃO foi salvo.
     try {
       await salvarApontamento(dados)
-      setApontamentoOpen(false)
-      setFormKey(k => k + 1)
-      // Recarrega os dados do cockpit
-      const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
-      const { data } = await supabase.from('apontamentos').select('*')
-        .gte('created_at', hoje.toISOString()).eq('numero_op', opAtiva!.numero)
-      setDadosHoje(data ?? [])
-      return true
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.'
       setErro(msg)
-      console.error('[handleSalvar] Falha ao salvar apontamento:', e)
+      console.error('[handleSalvar] Falha no INSERT:', e)
       return false
     }
+    // 2) Pós-sucesso: atualizar a UI. Falhas aqui não invalidam o salvamento.
+    try {
+      setApontamentoOpen(false)
+      setFormKey(k => k + 1)
+      if (opAtiva) {
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+        const { data } = await supabase.from('apontamentos').select('*')
+          .gte('created_at', hoje.toISOString()).eq('numero_op', opAtiva.numero)
+        setDadosHoje(data ?? [])
+      }
+    } catch (e) {
+      // Não bloqueia o sucesso — o INSERT já passou. Só loga.
+      console.warn('[handleSalvar] Pós-salvamento falhou (UI), mas o apontamento foi salvo:', e)
+    }
+    return true
   }
 
   if (carregando) return <div className="min-h-screen" style={{ background: 'var(--bg-page)' }} />
