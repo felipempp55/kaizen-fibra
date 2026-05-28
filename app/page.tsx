@@ -216,8 +216,7 @@ export default function Home() {
       const h = new Date(a.created_at).getHours()
       if (h >= 7 && h <= 20) porHora[h - 7]++
     })
-    const ultimosApontamentos = [...dadosHoje].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 6)
-    return { total, tempoTotal, porGrupo, porHora, ultimosApontamentos }
+    return { total, tempoTotal, porGrupo, porHora }
   }, [dadosHoje])
 
   function podeSalvarOp() { return novoNumeroOP.trim().length > 0 && novaFibra !== null && parseInt(novoTamanhoOp || '0') > 0 }
@@ -569,7 +568,7 @@ export default function Home() {
         </div>
 
         {/* ── Linha 3: Gráficos ───────────────────────────────────────────── */}
-        <div className="grid gap-3" style={{ gridTemplateColumns: '2fr 1fr 1fr' }}>
+        <div className="grid gap-3" style={{ gridTemplateColumns: '2fr 1fr' }}>
 
           {/* Área: apontamentos por hora */}
           <div className="rounded-2xl p-5 flex flex-col"
@@ -611,44 +610,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Feed: últimos apontamentos */}
-          <div className="rounded-2xl flex flex-col overflow-hidden"
-            style={{ background: '#fff', border: '1px solid var(--line)' }}>
-            <div className="px-5 pt-5 pb-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>ÚLTIMOS APONTAMENTOS</p>
-              <p className="text-lg font-bold" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Recentes</p>
-            </div>
-            <div className="flex-1 overflow-auto px-2 pb-4">
-              {metricas.ultimosApontamentos.length === 0
-                ? <p className="text-center py-8 text-sm" style={{ color: 'var(--text-faint)' }}>Nenhum apontamento ainda</p>
-                : metricas.ultimosApontamentos.map((a, i) => (
-                  <div key={a.id ?? i} className="px-3 py-2.5 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CORES_GRUPO[a.grupo] ?? 'var(--brand-primary)' }} />
-                      <span className="font-bold text-sm" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>{a.grupo}</span>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>· {a.tipo_desperdicio}</span>
-                      <span className="text-[10px] font-semibold ml-auto" style={{ color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
-                        {new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 pl-4 mt-1">
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{a.nome_operador}</span>
-                      {a.classificacao && (
-                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
-                          style={{
-                            background: a.classificacao === 'perda' ? 'var(--signal-red-soft)' : 'var(--signal-amber-soft)',
-                            color: a.classificacao === 'perda' ? 'var(--signal-red)' : 'var(--signal-amber)',
-                            fontFamily: 'var(--font-mono)',
-                          }}>
-                          {a.classificacao}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-          </div>
         </div>
 
         {/* ── Linha do Tempo — apontamentos do dia desta OP ───────────────── */}
