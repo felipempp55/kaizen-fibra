@@ -16,7 +16,7 @@ import {
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
 type Periodo = 'hoje' | 'semana' | 'mes' | 'ano' | 'personalizado'
-type Aba = 'producao' | 'qualidade' | 'financeiro'
+type Aba = 'producao' | 'qualidade' | 'financeiro' | 'historico'
 
 interface ApontamentoRico extends Apontamento {
   custo: number
@@ -564,6 +564,7 @@ export default function DashboardPage() {
             { v: 'producao',  label: 'Produção'   },
             { v: 'qualidade', label: 'Qualidade'  },
             { v: 'financeiro',label: 'Financeiro' },
+            { v: 'historico', label: 'Histórico'  },
           ] as { v: Aba; label: string }[]).map(a => (
             <button
               key={a.v}
@@ -1268,6 +1269,61 @@ export default function DashboardPage() {
               </Painel>
             </div>
           </>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════
+            ABA: HISTÓRICO — Linha do tempo de todos os apontamentos
+        ════════════════════════════════════════════════════════════════ */}
+        {aba === 'historico' && (
+          <Painel
+            titulo={`LINHA DO TEMPO · ${dados.length} ${dados.length === 1 ? 'APONTAMENTO' : 'APONTAMENTOS'}`}
+          >
+            {dados.length === 0 ? (
+              <p className="text-center py-10 text-sm" style={{ color: 'var(--text-faint)' }}>
+                Nenhum apontamento no período selecionado
+              </p>
+            ) : (
+              <div className="overflow-x-auto -mx-5">
+                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-page)', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
+                      <th className="text-left px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Data/Hora</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>OP</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Tipo</th>
+                      <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Operadora</th>
+                      <th className="text-right px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Qtd</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...dados]
+                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                      .map((a, i) => {
+                        const dt = new Date(a.created_at)
+                        const dataFmt = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                        const horaFmt = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                        const qtd = a.quantidade_pecas != null
+                          ? `${a.quantidade_pecas} pç`
+                          : a.quantidade_ml != null
+                            ? `${a.quantidade_ml} ml`
+                            : '—'
+                        const operadoraDisplay = (a.nome_operador || '').trim().replace(/\b\w/g, c => c.toUpperCase())
+                        return (
+                          <tr key={a.id ?? i} style={{ borderBottom: '1px solid var(--line-soft)' }}>
+                            <td className="px-5 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                              {dataFmt} <span style={{ color: 'var(--text-strong)' }}>{horaFmt}</span>
+                            </td>
+                            <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--text-body)', fontFamily: 'var(--font-mono)' }}>{a.numero_op}</td>
+                            <td className="px-3 py-2.5 font-semibold" style={{ color: 'var(--text-strong)' }}>{a.tipo_desperdicio}</td>
+                            <td className="px-3 py-2.5" style={{ color: 'var(--text-body)' }}>{operadoraDisplay}</td>
+                            <td className="px-5 py-2.5 text-right font-bold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-strong)' }}>{qtd}</td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Painel>
         )}
       </main>
     </div>

@@ -650,6 +650,62 @@ export default function Home() {
           </div>
         </div>
 
+        {/* ── Linha do Tempo — apontamentos do dia desta OP ───────────────── */}
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: '#fff', border: '1px solid var(--line)' }}>
+          <div className="px-5 pt-5 pb-3 flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>LINHA DO TEMPO · OP {opAtiva?.numero ?? ''}</p>
+              <p className="text-lg font-bold mt-0.5" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Apontamentos de Hoje</p>
+            </div>
+            <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              {dadosHoje.length} {dadosHoje.length === 1 ? 'registro' : 'registros'}
+            </span>
+          </div>
+          {dadosHoje.length === 0 ? (
+            <p className="text-center py-10 text-sm" style={{ color: 'var(--text-faint)' }}>Nenhum apontamento ainda</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-page)', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
+                    <th className="text-left px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Hora</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Tipo</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Operadora</th>
+                    <th className="text-right px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Qtd</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...dadosHoje]
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .map((a, i) => {
+                      const hora = new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                      const qtd = a.quantidade_pecas != null
+                        ? `${a.quantidade_pecas} pç`
+                        : a.quantidade_ml != null
+                          ? `${a.quantidade_ml} ml`
+                          : '—'
+                      const operadoraDisplay = (a.nome_operador || '').trim().replace(/\b\w/g, c => c.toUpperCase())
+                      return (
+                        <tr key={a.id ?? i} style={{ borderBottom: '1px solid var(--line-soft)' }}>
+                          <td className="px-5 py-2.5 tabular-nums" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{hora}</td>
+                          <td className="px-3 py-2.5">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CORES_GRUPO[a.grupo] ?? 'var(--brand-primary)' }} />
+                              <span className="font-semibold" style={{ color: 'var(--text-strong)' }}>{a.tipo_desperdicio}</span>
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5" style={{ color: 'var(--text-body)' }}>{operadoraDisplay}</td>
+                          <td className="px-5 py-2.5 text-right font-bold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-strong)' }}>{qtd}</td>
+                        </tr>
+                      )
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {erro && (
           <div className="rounded-xl p-4 text-sm"
             style={{ background: 'var(--signal-red-soft)', border: '1px solid #f5d2d1', color: 'var(--signal-red)' }}>
