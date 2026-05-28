@@ -326,13 +326,15 @@ export default function Home() {
 
   async function handleSalvar(dados: NovoApontamento): Promise<boolean> {
     setErro(null)
-    // 1) INSERT: única operação crítica. Se falhar aqui, o apontamento NÃO foi salvo.
-    try {
-      await salvarApontamento(dados)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.'
-      setErro(msg)
-      console.error('[handleSalvar] Falha no INSERT:', e)
+    // 1) INSERT: a Server Action agora RETORNA { ok, error } em vez de throw.
+    const resultado = await salvarApontamento(dados).catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : 'Erro de rede'
+      return { ok: false as const, error: msg }
+    })
+    if (!resultado.ok) {
+      const detalhe = 'detail' in resultado && resultado.detail ? ` (${resultado.detail})` : ''
+      setErro(`Erro ao salvar: ${resultado.error}${detalhe}`)
+      console.error('[handleSalvar] Falha no INSERT:', resultado)
       return false
     }
     // 2) Pós-sucesso: atualizar a UI. Falhas aqui não invalidam o salvamento.
@@ -347,7 +349,7 @@ export default function Home() {
       }
     } catch (e) {
       // Não bloqueia o sucesso — o INSERT já passou. Só loga.
-      console.warn('[handleSalvar] Pós-salvamento falhou (UI), mas o apontamento foi salvo:', e)
+      console.warn('[handleSalvar] Pos-salvamento falhou (UI), mas o apontamento foi salvo:', e)
     }
     return true
   }

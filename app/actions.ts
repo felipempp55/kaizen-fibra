@@ -3,13 +3,24 @@
 import { supabase } from '@/lib/supabase'
 import type { NovoApontamento, NovaCEPColeta, RascunhoCEP, TipoFibra } from '@/lib/types'
 
-export async function salvarApontamento(dados: NovoApontamento) {
+export async function salvarApontamento(dados: NovoApontamento): Promise<{ ok: true } | { ok: false; error: string; detail?: string }> {
   // Log detalhado no servidor (visível nos logs do Vercel) para diagnóstico
   console.log('[salvarApontamento] dados recebidos:', JSON.stringify(dados))
-  const { error } = await supabase.from('apontamentos').insert(dados)
-  if (error) {
-    console.error('[salvarApontamento] erro Supabase:', error)
-    throw new Error(`Falha ao salvar: ${error.message}`)
+  try {
+    const { error } = await supabase.from('apontamentos').insert(dados)
+    if (error) {
+      console.error('[salvarApontamento] erro Supabase:', error)
+      return {
+        ok: false,
+        error: error.message,
+        detail: JSON.stringify({ code: error.code, hint: error.hint, details: error.details }),
+      }
+    }
+    return { ok: true }
+  } catch (e) {
+    console.error('[salvarApontamento] excecao:', e)
+    const msg = e instanceof Error ? e.message : 'Erro desconhecido'
+    return { ok: false, error: msg }
   }
 }
 
