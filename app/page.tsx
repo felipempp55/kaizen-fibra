@@ -9,6 +9,7 @@ import TecladoNumerico from '@/components/TecladoNumerico'
 import { supabase } from '@/lib/supabase'
 import { exportarXlsx } from '@/lib/exportXlsx'
 import { gerarRelatorioPDF } from '@/lib/exportPdf'
+import { formatarQtdApontamento } from '@/lib/formatadores'
 
 interface OP { numero: string; fibra: TipoFibra; tamanho?: number }
 
@@ -665,9 +666,9 @@ export default function Home() {
           {dadosHoje.length === 0 ? (
             <p className="text-center py-10 text-sm" style={{ color: 'var(--text-faint)' }}>Nenhum apontamento ainda</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto" style={{ maxHeight: 420 }}>
               <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr style={{ background: 'var(--bg-page)', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
                     <th className="text-left px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Hora</th>
                     <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Tipo</th>
@@ -680,15 +681,10 @@ export default function Home() {
                     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                     .map((a, i) => {
                       const hora = new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                      const qtd = a.quantidade_pecas != null
-                        ? `${a.quantidade_pecas} pç`
-                        : a.quantidade_ml != null
-                          ? `${a.quantidade_ml} ml`
-                          : '—'
                       const operadoraDisplay = (a.nome_operador || '').trim().replace(/\b\w/g, c => c.toUpperCase())
                       return (
                         <tr key={a.id ?? i} style={{ borderBottom: '1px solid var(--line-soft)' }}>
-                          <td className="px-5 py-2.5 tabular-nums" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{hora}</td>
+                          <td className="px-5 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{hora}</td>
                           <td className="px-3 py-2.5">
                             <span className="inline-flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CORES_GRUPO[a.grupo] ?? 'var(--brand-primary)' }} />
@@ -696,7 +692,7 @@ export default function Home() {
                             </span>
                           </td>
                           <td className="px-3 py-2.5" style={{ color: 'var(--text-body)' }}>{operadoraDisplay}</td>
-                          <td className="px-5 py-2.5 text-right font-bold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-strong)' }}>{qtd}</td>
+                          <td className="px-5 py-2.5 text-right whitespace-nowrap">{formatarQtdApontamento(a)}</td>
                         </tr>
                       )
                     })}

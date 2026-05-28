@@ -7,6 +7,7 @@ import type { Apontamento } from '@/lib/types'
 import Navegacao from '@/components/Navegacao'
 import GraficoPareto from '@/components/GraficoPareto'
 import { calcularPerdaMateriais, calcularCustoTotal, formatarReal } from '@/lib/materiais'
+import { formatarQtdApontamento } from '@/lib/formatadores'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   PieChart, Pie, Cell, ComposedChart,
@@ -1283,9 +1284,9 @@ export default function DashboardPage() {
                 Nenhum apontamento no período selecionado
               </p>
             ) : (
-              <div className="overflow-x-auto -mx-5">
+              <div className="overflow-auto -mx-4" style={{ maxHeight: 600 }}>
                 <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
-                  <thead>
+                  <thead className="sticky top-0 z-10">
                     <tr style={{ background: 'var(--bg-page)', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
                       <th className="text-left px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Data/Hora</th>
                       <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>OP</th>
@@ -1301,11 +1302,6 @@ export default function DashboardPage() {
                         const dt = new Date(a.created_at)
                         const dataFmt = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
                         const horaFmt = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                        const qtd = a.quantidade_pecas != null
-                          ? `${a.quantidade_pecas} pç`
-                          : a.quantidade_ml != null
-                            ? `${a.quantidade_ml} ml`
-                            : '—'
                         const operadoraDisplay = (a.nome_operador || '').trim().replace(/\b\w/g, c => c.toUpperCase())
                         return (
                           <tr key={a.id ?? i} style={{ borderBottom: '1px solid var(--line-soft)' }}>
@@ -1315,7 +1311,7 @@ export default function DashboardPage() {
                             <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--text-body)', fontFamily: 'var(--font-mono)' }}>{a.numero_op}</td>
                             <td className="px-3 py-2.5 font-semibold" style={{ color: 'var(--text-strong)' }}>{a.tipo_desperdicio}</td>
                             <td className="px-3 py-2.5" style={{ color: 'var(--text-body)' }}>{operadoraDisplay}</td>
-                            <td className="px-5 py-2.5 text-right font-bold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-strong)' }}>{qtd}</td>
+                            <td className="px-5 py-2.5 text-right whitespace-nowrap">{formatarQtdApontamento(a)}</td>
                           </tr>
                         )
                       })}
