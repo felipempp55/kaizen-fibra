@@ -4,8 +4,13 @@ import { supabase } from '@/lib/supabase'
 import type { NovoApontamento, NovaCEPColeta, RascunhoCEP, TipoFibra } from '@/lib/types'
 
 export async function salvarApontamento(dados: NovoApontamento) {
+  // Log detalhado no servidor (visível nos logs do Vercel) para diagnóstico
+  console.log('[salvarApontamento] dados recebidos:', JSON.stringify(dados))
   const { error } = await supabase.from('apontamentos').insert(dados)
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('[salvarApontamento] erro Supabase:', error)
+    throw new Error(`Falha ao salvar: ${error.message}`)
+  }
 }
 
 export async function abrirOP(dados: { numero: string; fibra: TipoFibra; tamanho?: number }) {

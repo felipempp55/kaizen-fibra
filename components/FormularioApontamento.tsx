@@ -80,7 +80,7 @@ interface Props {
   fibra: TipoFibra
   operador: string
   tamanho?: number
-  onSalvar: (dados: NovoApontamento) => Promise<void>
+  onSalvar: (dados: NovoApontamento) => Promise<boolean | void>
 }
 
 export default function FormularioApontamento({ op, fibra, operador, tamanho, onSalvar }: Props) {
@@ -167,7 +167,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
     if (!grupoSelecionado || !tipoSelecionado || !quantidade) return
     setSalvando(true)
     try {
-      await onSalvar({
+      const ok = await onSalvar({
         grupo: grupoSelecionado,
         tipo_desperdicio: tipoSelecionado.nome,
         nome_operador: operadoraSelecionada ?? operador,
@@ -183,7 +183,11 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
         observacao: null,
         tamanho_op: tamanho ?? null,
       })
-      setSucesso(true)
+      // Só vai para a tela de sucesso se realmente salvou
+      if (ok !== false) setSucesso(true)
+    } catch (e) {
+      // Erro inesperado — não destrói a tela. A mensagem é exibida pelo cockpit.
+      console.error('[FormularioApontamento.confirmar]', e)
     } finally {
       setSalvando(false)
     }

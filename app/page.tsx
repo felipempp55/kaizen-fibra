@@ -324,7 +324,7 @@ export default function Home() {
     setOpAtiva(op); setFormKey(k => k + 1); setApontamentoOpen(false)
   }
 
-  async function handleSalvar(dados: NovoApontamento) {
+  async function handleSalvar(dados: NovoApontamento): Promise<boolean> {
     setErro(null)
     try {
       await salvarApontamento(dados)
@@ -335,9 +335,12 @@ export default function Home() {
       const { data } = await supabase.from('apontamentos').select('*')
         .gte('created_at', hoje.toISOString()).eq('numero_op', opAtiva!.numero)
       setDadosHoje(data ?? [])
+      return true
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.')
-      throw e
+      const msg = e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.'
+      setErro(msg)
+      console.error('[handleSalvar] Falha ao salvar apontamento:', e)
+      return false
     }
   }
 
