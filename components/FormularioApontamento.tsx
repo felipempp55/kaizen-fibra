@@ -176,7 +176,9 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
         quantidade_pecas: tipoSelecionado.unidade === 'pecas' ? parseInt(quantidade) : null,
         quantidade_ml: tipoSelecionado.unidade === 'ml'
           ? parseFloat(quantidade.replace(',', '.'))
-          : (tipoSelecionado.segunda_quantidade ? parseInt(segundaQuantidade || '0') : null),
+          : (tipoSelecionado.segunda_quantidade && segundaQuantidade.trim() !== ''
+              ? parseInt(segundaQuantidade)
+              : null),
         classificacao: tipoSelecionado.classificacao_fixa
           ?? (tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null),
         tempo_minutos: tempoMinutos ? parseInt(tempoMinutos) : null,
