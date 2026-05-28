@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useId } from 'react'
 import FormularioApontamento from '@/components/FormularioApontamento'
 import { salvarApontamento, cancelarOP, abrirOP, fecharOP } from './actions'
 import type { NovoApontamento, TipoFibra, Apontamento } from '@/lib/types'
@@ -49,6 +49,8 @@ function Sparkline({ data, color, w = 80, h = 26 }: { data: number[]; color: str
 }
 
 function AreaChartSVG({ data, labels, color = 'var(--brand-primary)' }: { data: number[]; labels?: string[]; color?: string }) {
+  const [hovered, setHovered] = useState<number | null>(null)
+  const reactId = useId().replace(/:/g, '')
   if (!data.length) return null
   const W = 560, H = 160, padL = 36, padR = 16, padT = 12, padB = 28
   const w = W - padL - padR, h = H - padT - padB
@@ -56,8 +58,28 @@ function AreaChartSVG({ data, labels, color = 'var(--brand-primary)' }: { data: 
   const sx = w / Math.max(data.length - 1, 1)
   const pts: [number, number][] = data.map((v, i) => [padL + i * sx, padT + h - (v / mx) * h])
   const path = catmullRom(pts)
-  const id = `area-${Math.random().toString(36).slice(2)}`
+  const id = `area-${reactId}`
   const ticks = [0, mx * 0.25, mx * 0.5, mx * 0.75, mx].map(Math.round)
+
+  // Índice ativo: o do hover, ou o último (etiqueta padrão "ao vivo")
+  const idxAtivo = hovered != null ? hovered : pts.length - 1
+  const ptAtivo = pts[idxAtivo]
+  const valAtivo = data[idxAtivo]
+  const labelAtivo = labels?.[idxAtivo] ?? ''
+  // Largura dinâmica do balão (acomoda "Xh · YY")
+  const txt = labelAtivo ? `${labelAtivo}h · ${valAtivo}` : `${valAtivo}`
+  const bw = Math.max(40, txt.length * 6 + 14)
+  const bx = Math.min(Math.max(ptAtivo[0] - bw / 2, padL), W - padR - bw)
+  const by = Math.max(padT, ptAtivo[1] - 28)
+
+  function onMove(e: React.MouseEvent<SVGRectElement> | React.TouchEvent<SVGRectElement>) {
+    const rect = (e.currentTarget.ownerSVGElement ?? e.currentTarget).getBoundingClientRect()
+    const clientX = 'touches' in e ? e.touches[0]?.clientX ?? 0 : e.clientX
+    const svgX = ((clientX - rect.left) / rect.width) * W
+    const idx = Math.round((svgX - padL) / sx)
+    if (idx >= 0 && idx < data.length) setHovered(idx)
+  }
+
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
       <defs>
@@ -84,23 +106,30 @@ function AreaChartSVG({ data, labels, color = 'var(--brand-primary)' }: { data: 
       <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {pts.map((p, i) => (
         <circle key={i} cx={p[0]} cy={p[1]}
-          r={i === pts.length - 1 ? 4 : 2}
-          fill={i === pts.length - 1 ? color : '#fff'}
+          r={i === idxAtivo ? 4 : 2}
+          fill={i === idxAtivo ? color : '#fff'}
           stroke={color} strokeWidth="1.5"
         />
       ))}
-      {pts.length > 0 && (() => {
-        const last = pts[pts.length - 1]
-        const val = data[data.length - 1]
-        const bx = Math.min(last[0] - 20, W - padR - 44)
-        return (
-          <>
-            <line x1={last[0]} y1={padT} x2={last[0]} y2={padT + h} stroke={color} strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
-            <rect x={bx} y={last[1] - 24} width="40" height="18" rx="4" fill="var(--brand-deep)" />
-            <text x={bx + 20} y={last[1] - 11} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fontWeight="700" fill="#fff">{val}</text>
-          </>
-        )
-      })()}
+      {/* Indicador (linha vertical + balão) — segue o cursor ou ancora no último */}
+      {ptAtivo && (
+        <>
+          <line x1={ptAtivo[0]} y1={padT} x2={ptAtivo[0]} y2={padT + h} stroke={color} strokeWidth="1" strokeDasharray="3 3" opacity={hovered != null ? 0.7 : 0.4} />
+          <rect x={bx} y={by} width={bw} height="18" rx="4" fill="var(--brand-deep)" />
+          <text x={bx + bw / 2} y={by + 13} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fontWeight="700" fill="#fff">{txt}</text>
+        </>
+      )}
+      {/* Camada de captura de mouse/toque (invisível, fica por cima) */}
+      <rect
+        x={padL} y={padT} width={w} height={h}
+        fill="transparent"
+        style={{ cursor: 'crosshair' }}
+        onMouseMove={onMove}
+        onMouseLeave={() => setHovered(null)}
+        onTouchStart={onMove}
+        onTouchMove={onMove}
+        onTouchEnd={() => setHovered(null)}
+      />
     </svg>
   )
 }
