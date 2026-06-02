@@ -166,6 +166,8 @@ export default function Home() {
   const [carregando, setCarregando] = useState(true)
   const [abrindoNovaOp, setAbrindoNovaOp] = useState(false)
   const [novoNumeroOP, setNovoNumeroOP] = useState('')
+  // Prefixo de ano da OP (2 dígitos). Default = ano atual (26 em 2026, 27 em 2027…)
+  const [novoAnoOP, setNovoAnoOP] = useState(() => String(new Date().getFullYear()).slice(-2))
   const [novaFibra, setNovaFibra] = useState<TipoFibra | null>(null)
   const [novoTamanhoOp, setNovoTamanhoOp] = useState('')
   const [erro, setErro] = useState<string | null>(null)
@@ -248,11 +250,24 @@ export default function Home() {
     return { total, tempoTotal, porGrupo, porHora }
   }, [dadosHoje])
 
-  function podeSalvarOp() { return novoNumeroOP.trim().length > 0 && novaFibra !== null && parseInt(novoTamanhoOp || '0') > 0 }
+  // Monta o número final da OP: prefixo de ano (2 díg.) + sequência (6 díg. com zeros à esquerda)
+  function montarNumeroOP() { return novoAnoOP + novoNumeroOP.padStart(6, '0') }
+  function podeSalvarOp() { return novoAnoOP.length === 2 && novoNumeroOP.trim().length > 0 && novaFibra !== null && parseInt(novoTamanhoOp || '0') > 0 }
+  function ajustarAno(delta: number) {
+    const n = parseInt(novoAnoOP || '0') + delta
+    if (n < 0 || n > 99) return
+    setNovoAnoOP(String(n).padStart(2, '0'))
+  }
+  function resetarFormOP() {
+    setNovoNumeroOP('')
+    setNovoAnoOP(String(new Date().getFullYear()).slice(-2))
+    setNovaFibra(null)
+    setNovoTamanhoOp('')
+  }
 
   async function confirmarNovaOp() {
     if (!podeSalvarOp() || !novaFibra) return
-    const nova: OP = { numero: novoNumeroOP.trim().toUpperCase(), fibra: novaFibra, tamanho: parseInt(novoTamanhoOp) || undefined }
+    const nova: OP = { numero: montarNumeroOP(), fibra: novaFibra, tamanho: parseInt(novoTamanhoOp) || undefined }
     const r = await abrirOP({ numero: nova.numero, fibra: nova.fibra, tamanho: nova.tamanho })
       .catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
     if (!r.ok) {
@@ -262,7 +277,7 @@ export default function Home() {
     // Atualização otimista: não espera o evento realtime para selecionar neste dispositivo
     setOps(prev => prev.some(o => o.numero === nova.numero) ? prev : [...prev, nova])
     setOpAtiva(nova)
-    setNovoNumeroOP(''); setNovaFibra(null); setNovoTamanhoOp(''); setAbrindoNovaOp(false); setFormKey(k => k + 1)
+    resetarFormOP(); setAbrindoNovaOp(false); setFormKey(k => k + 1)
   }
 
   function solicitarFechamentoOp(numero: string) {
@@ -705,7 +720,7 @@ export default function Home() {
         <div className="fixed inset-0 z-40 flex flex-col" style={{ background: 'var(--bg-page)', animation: 'slideUp 350ms cubic-bezier(0.2,0.8,0.2,1)' }}>
           <div className="flex items-center gap-4 px-6 py-4 shrink-0"
             style={{ background: '#fff', borderBottom: '1px solid var(--line)' }}>
-            <button onClick={() => { setAbrindoNovaOp(false); setNovoNumeroOP(''); setNovaFibra(null); setNovoTamanhoOp('') }}
+            <button onClick={() => { setAbrindoNovaOp(false); resetarFormOP() }}
               className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-[0.97]"
               style={{ background: '#fff', border: '1px solid var(--line)', color: 'var(--text-body)' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
@@ -715,8 +730,44 @@ export default function Home() {
             </span>
           </div>
           <div className="flex-1 overflow-y-auto p-6 max-w-lg mx-auto w-full flex flex-col gap-6">
-            <TecladoNumerico label="Número da Ordem de Produção (OP)" valor={novoNumeroOP} onChange={setNovoNumeroOP}
-              placeholder="ex: 000123456" maxLength={9} onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }} />
+            {/* ── Número da OP: preview + seletor de ano + teclado ──────────── */}
+            <div className="flex flex-col gap-3">
+              <p className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                Número da Ordem de Produção
+              </p>
+
+              {/* Preview da OP completa que será aberta */}
+              <div className="w-full rounded-xl flex flex-col items-center gap-1 py-4"
+                style={{ background: 'var(--brand-primary-tint)', border: '2px solid var(--brand-primary)' }}>
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--brand-primary-dark)', fontFamily: 'var(--font-mono)' }}>
+                  OP que será aberta
+                </span>
+                <div className="flex items-baseline">
+                  <span className="text-4xl font-black tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: 'var(--brand-primary-dark)' }}>
+                    {novoAnoOP}
+                  </span>
+                  <span className="text-4xl font-black tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: novoNumeroOP ? 'var(--text-strong)' : 'var(--text-faint)' }}>
+                    {novoNumeroOP.padStart(6, '0')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Seletor de ano (raramente usado — pré-setado no ano atual) */}
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Ano</span>
+                <button type="button" onClick={() => ajustarAno(-1)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lg transition-all active:scale-[0.94]"
+                  style={{ background: '#fff', border: '1px solid var(--line)', color: 'var(--text-body)' }}>−</button>
+                <span className="text-base font-bold tabular-nums w-7 text-center" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-strong)' }}>{novoAnoOP}</span>
+                <button type="button" onClick={() => ajustarAno(1)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lg transition-all active:scale-[0.94]"
+                  style={{ background: '#fff', border: '1px solid var(--line)', color: 'var(--text-body)' }}>+</button>
+              </div>
+
+              {/* Teclado: só os 6 dígitos finais */}
+              <TecladoNumerico label="Digite os 6 dígitos finais" valor={novoNumeroOP} onChange={setNovoNumeroOP}
+                placeholder="ex: 000752" maxLength={6} onEnter={() => { if (podeSalvarOp()) confirmarNovaOp() }} />
+            </div>
             <div className="flex flex-col gap-3">
               <p className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
                 Tipo de Fibra
