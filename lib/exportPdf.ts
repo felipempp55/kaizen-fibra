@@ -141,7 +141,11 @@ export async function gerarRelatorioPDF(
   const pecasPerdidas = sorted.filter(a => a.classificacao === 'perda').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
     + sorted.filter(a => a.tipo_desperdicio === 'Crimpagem').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
     + sorted.filter(a => ['Máquina', 'Clivagem com Defeito'].includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_ml ?? 0), 0)
-  const pecasRetrabalho = sorted.filter(a => a.classificacao === 'retrabalho').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
+  // Nº total de retrabalhos apontados (soma de quantidades, não contagem de apontamentos).
+  // Máquina e Clivagem com Defeito guardam os retrabalhos no 1º campo (quantidade_pecas).
+  // Soma-se também apontamentos explicitamente classificados como 'retrabalho'.
+  const numRetrabalhos = sorted.filter(a => ['Máquina', 'Clivagem com Defeito'].includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
+    + sorted.filter(a => a.classificacao === 'retrabalho').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
   const tempoRetMin = sorted.reduce((s, a) => s + (a.tempo_minutos ?? 0), 0)
   const totalTempoMs = temposRetrabalho.reduce((s, t) => s + t.tempo_ms, 0)
   const totalCustoHH = temposRetrabalho.reduce((s, t) => s + t.custo_hh, 0)
@@ -196,7 +200,7 @@ export async function gerarRelatorioPDF(
   const cellW = PW / 3 - 1.5
   const kpis = [
     { label: 'Peças Perdidas',      valor: String(pecasPerdidas),       cor: pecasPerdidas > 0 ? COR_RED : COR_DEEP },
-    { label: 'Peças Retrabalho',    valor: String(pecasRetrabalho),      cor: COR_AMBER },
+    { label: 'Nº de Retrabalhos',   valor: String(numRetrabalhos),       cor: COR_AMBER },
     { label: 'Taxa de Refugo',      valor: tamanhoOp ? `${((pecasPerdidas / tamanhoOp) * 100).toFixed(2)}%` : 'N/D', cor: COR_RED },
     { label: 'Custo Material',      valor: formatarReal(custoTotal),    cor: COR_DEEP },
     { label: 'Custo Hora Homem',    valor: formatarReal(totalCustoHH),  cor: COR_AMBER },
