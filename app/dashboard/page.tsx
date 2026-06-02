@@ -57,7 +57,7 @@ function getIntervalo(p: Periodo, ini: string, fim: string) {
   const sod = (d: Date) => { d.setHours(0, 0, 0, 0); return d }
   if (p === 'hoje') return { de: sod(new Date()).toISOString(), ate: agora.toISOString() }
   if (p === 'semana') { const d = new Date(); d.setDate(d.getDate() - 6); return { de: sod(d).toISOString(), ate: agora.toISOString() } }
-  if (p === 'mes') { const d = new Date(); d.setDate(d.getDate() - 29); return { de: sod(d).toISOString(), ate: agora.toISOString() } }
+  if (p === 'mes') { const d = new Date(); d.setDate(1); return { de: sod(d).toISOString(), ate: agora.toISOString() } }
   if (p === 'ano') { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return { de: sod(d).toISOString(), ate: agora.toISOString() } }
   return {
     de: ini ? new Date(ini + 'T00:00:00').toISOString() : sod(new Date()).toISOString(),
