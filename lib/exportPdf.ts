@@ -148,7 +148,6 @@ export async function gerarRelatorioPDF(
     + sorted.filter(a => a.classificacao === 'retrabalho').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
   const tempoRetMin = sorted.reduce((s, a) => s + (a.tempo_minutos ?? 0), 0)
   const totalTempoMs = temposRetrabalho.reduce((s, t) => s + t.tempo_ms, 0)
-  const totalCustoHH = temposRetrabalho.reduce((s, t) => s + t.custo_hh, 0)
 
   // Por tipo
   const mTipo = new Map<string, { oc: number; pecas: number; custo: number }>()
@@ -203,7 +202,7 @@ export async function gerarRelatorioPDF(
     { label: 'Nº de Retrabalhos',   valor: String(numRetrabalhos),       cor: COR_AMBER },
     { label: 'Taxa de Refugo',      valor: tamanhoOp ? `${((pecasPerdidas / tamanhoOp) * 100).toFixed(2)}%` : 'N/D', cor: COR_RED },
     { label: 'Custo Material',      valor: formatarReal(custoTotal),    cor: COR_DEEP },
-    { label: 'Custo Hora Homem',    valor: formatarReal(totalCustoHH),  cor: COR_AMBER },
+    { label: '% de Retrabalho',     valor: tamanhoOp ? `${((numRetrabalhos / tamanhoOp) * 100).toFixed(2)}%` : 'N/D', cor: COR_AMBER },
     { label: 'Tempo Manual (crôn.)',valor: totalTempoMs > 0 ? formatTempoMs(totalTempoMs) : `${tempoRetMin}min`, cor: COR_BRAND },
   ]
 
