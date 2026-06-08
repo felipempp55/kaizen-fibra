@@ -694,7 +694,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
                 <LinhaConfirm label="Operadora" valor={operadoraSelecionada ?? ''} />
                 <LinhaConfirm label="Grupo" valor={grupoSelecionado ?? ''} />
                 <LinhaConfirm label="Tipo" valor={tipoSelecionado?.nome ?? ''} />
-                <LinhaConfirm label={labelQtdPrincipal} valor={quantidade} mono />
+                <LinhaConfirm label={labelQtdPrincipal} valor={tipoSelecionado?.input === 'contador_duplo' ? (quantidade || '0') : quantidade} mono />
                 {tipoSelecionado?.segunda_quantidade && (tipoSelecionado.input === 'contador_duplo' || segundaQuantidade) && (
                   <LinhaConfirm label={tipoSelecionado.segunda_quantidade.label} valor={segundaQuantidade || '0'} mono />
                 )}
