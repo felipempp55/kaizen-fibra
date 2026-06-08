@@ -165,7 +165,9 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
   }
 
   async function confirmar() {
-    if (!grupoSelecionado || !tipoSelecionado || !quantidade) return
+    // A validação de "ao menos uma quantidade" é feita adiante (após sanitização),
+    // permitindo apontar só perda (2º campo) sem retrabalho (1º campo).
+    if (!grupoSelecionado || !tipoSelecionado) return
     setSalvando(true)
     try {
       // ── Sanitização defensiva: converte strings em números válidos OU null.
@@ -221,7 +223,8 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
     switch (etapaAtual) {
       case 'operadora': return !!operadoraSelecionada
       case 'quantidade':
-        if (tipoSelecionado?.input === 'contador_duplo') return parseInt(quantidade || '0') > 0
+        // Duplo: basta um dos dois campos ter valor (permite só perda, sem retrabalho)
+        if (tipoSelecionado?.input === 'contador_duplo') return parseInt(quantidade || '0') > 0 || parseInt(segundaQuantidade || '0') > 0
         return quantidade.length > 0
       case 'segunda_quantidade': return segundaQuantidade.length > 0
       case 'classificacao': return !!classificacao
@@ -498,7 +501,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
               label="Continuar →"
               onClick={avancar}
               variante="primario"
-              disabled={parseInt(quantidade || '0') === 0}
+              disabled={parseInt(quantidade || '0') === 0 && parseInt(segundaQuantidade || '0') === 0}
             />
           </div>
         </div>
