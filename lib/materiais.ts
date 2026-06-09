@@ -116,9 +116,14 @@ export function calcularPerdaMateriais(
       return consolidar(itens)
     }
 
-    case 'Clivagem com Defeito':
-      // qM = peças perdidas → Cânula
+    case 'Clivagem com Defeito':   // tipo legado (mantido p/ histórico)
+    case 'Clivagem Distal':
+      // qM = peças perdidas → Cânula (MP374, "Fibra")
       return qM > 0 ? [{ material: MATERIAIS.CANULA, quantidade: qM }] : []
+
+    case 'Clivagem Proximal':
+      // Sem material atrelado ainda (aguardando informações)
+      return []
 
     default:
       return []

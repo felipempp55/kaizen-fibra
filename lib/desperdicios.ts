@@ -1,5 +1,9 @@
 import type { GrupoDesperdicio } from './types'
 
+// Tipos contador_duplo cujo 1º campo (quantidade_pecas) = retrabalho e 2º (quantidade_ml) = perda.
+// Inclui o tipo legado 'Clivagem com Defeito' para manter o histórico nos cálculos.
+export const TIPOS_DUPLO_RETRABALHO_PERDA = ['Máquina', 'Clivagem com Defeito', 'Clivagem Proximal', 'Clivagem Distal']
+
 export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
   {
     nome: 'Epóxi',
@@ -77,7 +81,16 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
     nome: 'Clivagem',
     tipos: [
       {
-        nome: 'Clivagem com Defeito',
+        nome: 'Clivagem Proximal',
+        unidade: 'pecas',
+        classificacao: 'nenhum',
+        tempo: 'nunca',
+        label_quantidade: 'Retrabalhos',
+        segunda_quantidade: { label: 'Peças perdidas' },
+        input: 'contador_duplo',
+      },
+      {
+        nome: 'Clivagem Distal',
         unidade: 'pecas',
         classificacao: 'nenhum',
         tempo: 'nunca',

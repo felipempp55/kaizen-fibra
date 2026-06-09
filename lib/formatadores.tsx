@@ -8,6 +8,8 @@ export function formatarQtdApontamento(a: Apontamento): React.ReactElement {
     'Máquina':              { p: 'retr', s: 'perd',  corS: 'var(--signal-red)'   },
     'Crimpagem':            { p: 'perd', s: 'manut', corS: 'var(--signal-amber)' },
     'Clivagem com Defeito': { p: 'retr', s: 'perd',  corS: 'var(--signal-red)'   },
+    'Clivagem Proximal':    { p: 'retr', s: 'perd',  corS: 'var(--signal-red)'   },
+    'Clivagem Distal':      { p: 'retr', s: 'perd',  corS: 'var(--signal-red)'   },
   }
   const dual = labelsDuplos[a.tipo_desperdicio]
   if (dual && a.quantidade_pecas != null) {

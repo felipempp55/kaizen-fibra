@@ -8,6 +8,7 @@ import Navegacao from '@/components/Navegacao'
 import GraficoPareto from '@/components/GraficoPareto'
 import { calcularPerdaMateriais, calcularCustoTotal, formatarReal } from '@/lib/materiais'
 import { formatarQtdApontamento } from '@/lib/formatadores'
+import { TIPOS_DUPLO_RETRABALHO_PERDA } from '@/lib/desperdicios'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   PieChart, Pie, Cell, ComposedChart,
@@ -283,12 +284,11 @@ export default function DashboardPage() {
     const pecasPerdidas =
       dados.filter(a => a.classificacao === 'perda').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0) +
       dados.filter(a => a.tipo_desperdicio === 'Crimpagem').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0) +
-      dados.filter(a => ['Máquina', 'Clivagem com Defeito'].includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_ml ?? 0), 0)
+      dados.filter(a => TIPOS_DUPLO_RETRABALHO_PERDA.includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_ml ?? 0), 0)
 
     const pecasRetrabalho =
       dados.filter(a => a.classificacao === 'retrabalho').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0) +
-      dados.filter(a => a.tipo_desperdicio === 'Máquina').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0) +
-      dados.filter(a => a.tipo_desperdicio === 'Clivagem com Defeito').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
+      dados.filter(a => TIPOS_DUPLO_RETRABALHO_PERDA.includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
 
     // ── Evolução diária ────────────────────────────────────────────────────
     type DiaE = { data: string; Perdas: number; Retrabalhos: number; Custo: number; Apontamentos: number }

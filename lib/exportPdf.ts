@@ -2,6 +2,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Apontamento } from './types'
 import { calcularPerdaMateriais, calcularCustoTotal, formatarReal } from './materiais'
+import { TIPOS_DUPLO_RETRABALHO_PERDA } from './desperdicios'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function nomeDisplay(s: string) { return s.trim().replace(/\b\w/g, c => c.toUpperCase()) }
@@ -140,11 +141,11 @@ export async function gerarRelatorioPDF(
   const custoTotal = ricos.reduce((s, a) => s + a.custo, 0)
   const pecasPerdidas = sorted.filter(a => a.classificacao === 'perda').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
     + sorted.filter(a => a.tipo_desperdicio === 'Crimpagem').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
-    + sorted.filter(a => ['Máquina', 'Clivagem com Defeito'].includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_ml ?? 0), 0)
+    + sorted.filter(a => TIPOS_DUPLO_RETRABALHO_PERDA.includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_ml ?? 0), 0)
   // Nº total de retrabalhos apontados (soma de quantidades, não contagem de apontamentos).
-  // Máquina e Clivagem com Defeito guardam os retrabalhos no 1º campo (quantidade_pecas).
+  // Máquina e Clivagens guardam os retrabalhos no 1º campo (quantidade_pecas).
   // Soma-se também apontamentos explicitamente classificados como 'retrabalho'.
-  const numRetrabalhos = sorted.filter(a => ['Máquina', 'Clivagem com Defeito'].includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
+  const numRetrabalhos = sorted.filter(a => TIPOS_DUPLO_RETRABALHO_PERDA.includes(a.tipo_desperdicio)).reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
     + sorted.filter(a => a.classificacao === 'retrabalho').reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
   const tempoRetMin = sorted.reduce((s, a) => s + (a.tempo_minutos ?? 0), 0)
   const totalTempoMs = temposRetrabalho.reduce((s, t) => s + t.tempo_ms, 0)
