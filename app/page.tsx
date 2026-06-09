@@ -409,6 +409,7 @@ export default function Home() {
     'Epóxi': '#8b5cf6',
     'Clivagem': 'var(--brand-tecno-deep)',
     'Problemas Dimensionais': 'var(--brand-soft)',
+    'Outros': '#64748b',
   }
 
   const donutData = Object.entries(metricas.porGrupo).map(([label, value]) => ({

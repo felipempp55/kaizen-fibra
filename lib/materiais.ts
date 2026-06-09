@@ -16,6 +16,13 @@ export const MATERIAIS = {
   FERRULE_365: { codigo: 'MP0000376', nome: 'Ferrule 365',              custo: 32.92 } as Material,
   HUB:         { codigo: 'MP0000389', nome: 'Hub para Conector SMA',    custo:  5.72 } as Material,
   CANULA:      { codigo: 'MP0000374', nome: 'Cânula de Fibra Óptica',   custo: 26.49 } as Material,
+  ALIVIADOR:   { codigo: 'MP0000383', nome: 'Aliviador de Tensão',      custo:  3.04 } as Material,
+}
+
+// Busca um material pelo código (usado no grupo "Outros", onde a operadora escolhe os materiais)
+const TODOS_MATERIAIS = Object.values(MATERIAIS)
+export function materialPorCodigo(codigo: string): Material | undefined {
+  return TODOS_MATERIAIS.find(m => m.codigo === codigo)
 }
 
 // ─── Item de perda ────────────────────────────────────────────────────────────
@@ -86,11 +93,23 @@ export function calcularPerdaMateriais(
   fibra: TipoFibra,
   quantidade_pecas: number | null,
   quantidade_ml: number | null,
+  materiaisCodigos?: string[] | null,   // usado só pelo grupo "Outros"
 ): ItemPerda[] {
   const qP = quantidade_pecas ?? 0
   const qM = quantidade_ml   ?? 0
 
   switch (tipo_desperdicio) {
+
+    case 'Outros': {
+      // qP = peças perdidas; custo = perda × cada material marcado pela operadora
+      if (qP <= 0 || !materiaisCodigos || materiaisCodigos.length === 0) return []
+      const itens: ItemPerda[] = []
+      for (const cod of materiaisCodigos) {
+        const mat = materialPorCodigo(cod.trim())
+        if (mat) itens.push({ material: mat, quantidade: qP })
+      }
+      return consolidar(itens)
+    }
 
     case 'Entupimento do Ferrule':
       return smaBasico(fibra, qP)
@@ -138,4 +157,19 @@ export function calcularCustoTotal(itens: ItemPerda[]): number {
 
 export function formatarReal(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+// ─── Grupo "Outros" ─────────────────────────────────────────────────────────────
+// Opções de materiais que a operadora pode marcar como perdidos.
+// Parte B e Ferrule são resolvidos pela fibra da OP. "Fibra" é como a produção
+// chama a Cânula (MP374).
+export function opcoesMateriaisOutros(fibra: TipoFibra): { codigo: string; label: string }[] {
+  return [
+    { codigo: MATERIAIS.PARTE_A.codigo,   label: 'Parte A' },
+    { codigo: parteB(fibra).codigo,       label: 'Parte B' },
+    { codigo: ferrule(fibra).codigo,      label: 'Ferrule' },
+    { codigo: MATERIAIS.HUB.codigo,       label: 'Hub' },
+    { codigo: MATERIAIS.CANULA.codigo,    label: 'Fibra' },
+    { codigo: MATERIAIS.ALIVIADOR.codigo, label: 'Aliviador de Tensão' },
+  ]
 }

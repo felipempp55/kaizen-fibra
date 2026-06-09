@@ -135,7 +135,7 @@ export async function gerarRelatorioPDF(
 
   // Cálculos gerais
   const ricos = sorted.map(a => {
-    const itens = calcularPerdaMateriais(a.tipo_desperdicio, fibra, a.quantidade_pecas, a.quantidade_ml)
+    const itens = calcularPerdaMateriais(a.tipo_desperdicio, fibra, a.quantidade_pecas, a.quantidade_ml, a.materiais_perdidos?.split(',') ?? null)
     return { ...a, custo: calcularCustoTotal(itens) }
   })
   const custoTotal = ricos.reduce((s, a) => s + a.custo, 0)
@@ -327,7 +327,7 @@ export async function gerarRelatorioPDF(
     startY: y,
     head: [['Data/Hora', 'Grupo', 'Tipo', 'Operadora', 'Qtd', 'Class.', 'R$']],
     body: sorted.map(a => {
-      const itens = calcularPerdaMateriais(a.tipo_desperdicio, fibra, a.quantidade_pecas, a.quantidade_ml)
+      const itens = calcularPerdaMateriais(a.tipo_desperdicio, fibra, a.quantidade_pecas, a.quantidade_ml, a.materiais_perdidos?.split(',') ?? null)
       const custo = calcularCustoTotal(itens)
       return [
         fmtDt(a.created_at),

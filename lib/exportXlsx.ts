@@ -16,7 +16,7 @@ export function exportarXlsx(apontamentos: Apontamento[]) {
 
   // ── Sheet 1: Dados brutos ─────────────────────────────────────────────────
   const sheet1 = apontamentos.map(a => {
-    const itens = calcularPerdaMateriais(a.tipo_desperdicio, a.fibra ?? 'F272', a.quantidade_pecas, a.quantidade_ml)
+    const itens = calcularPerdaMateriais(a.tipo_desperdicio, a.fibra ?? 'F272', a.quantidade_pecas, a.quantidade_ml, a.materiais_perdidos?.split(',') ?? null)
     const custo = calcularCustoTotal(itens)
     const dt = new Date(a.created_at)
     return {
@@ -42,7 +42,7 @@ export function exportarXlsx(apontamentos: Apontamento[]) {
   // ── Sheet 2: Resumo por tipo ──────────────────────────────────────────────
   const mTipo = new Map<string, { oc: number; pecas: number; custo: number; tempo: number }>()
   apontamentos.forEach(a => {
-    const itens = calcularPerdaMateriais(a.tipo_desperdicio, a.fibra ?? 'F272', a.quantidade_pecas, a.quantidade_ml)
+    const itens = calcularPerdaMateriais(a.tipo_desperdicio, a.fibra ?? 'F272', a.quantidade_pecas, a.quantidade_ml, a.materiais_perdidos?.split(',') ?? null)
     const custo = calcularCustoTotal(itens)
     const prev = mTipo.get(a.tipo_desperdicio) ?? { oc: 0, pecas: 0, custo: 0, tempo: 0 }
     mTipo.set(a.tipo_desperdicio, {
@@ -93,7 +93,7 @@ export function exportarXlsx(apontamentos: Apontamento[]) {
   // ── Sheet 4: Por OP ───────────────────────────────────────────────────────
   const mOP = new Map<string, { oc: number; perdas: number; retrabalhos: number; custo: number; tamanho: number | null }>()
   apontamentos.forEach(a => {
-    const itens = calcularPerdaMateriais(a.tipo_desperdicio, a.fibra ?? 'F272', a.quantidade_pecas, a.quantidade_ml)
+    const itens = calcularPerdaMateriais(a.tipo_desperdicio, a.fibra ?? 'F272', a.quantidade_pecas, a.quantidade_ml, a.materiais_perdidos?.split(',') ?? null)
     const custo = calcularCustoTotal(itens)
     const prev = mOP.get(a.numero_op) ?? { oc: 0, perdas: 0, retrabalhos: 0, custo: 0, tamanho: a.tamanho_op }
     mOP.set(a.numero_op, {

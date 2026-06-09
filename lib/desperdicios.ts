@@ -100,4 +100,21 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
       },
     ],
   },
+  {
+    nome: 'Outros',
+    tipos: [
+      {
+        nome: 'Outros',
+        unidade: 'pecas',
+        classificacao: 'nenhum',
+        tempo: 'nunca',
+        classificacao_fixa: 'perda',
+        label_quantidade: 'Quantidade perdida (peças)',
+        input: 'outros',
+      },
+    ],
+  },
 ]
+
+// Nome do grupo especial que recebe tratamento próprio na UI (fora da grade de grupos)
+export const GRUPO_OUTROS = 'Outros'

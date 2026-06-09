@@ -4,7 +4,7 @@ export type OpcaoClassificacao = 'perda_retrabalho' | 'nenhum'
 export type OpcaoTempo = 'sempre' | 'nunca' | 'se_retrabalho'
 export type TipoFibra = 'F272' | 'F365'
 
-export type OpcaoInput = 'teclado' | 'contador' | 'contador_duplo'
+export type OpcaoInput = 'teclado' | 'contador' | 'contador_duplo' | 'outros'
 
 export interface TipoDesperdicio {
   nome: string
@@ -42,6 +42,8 @@ export interface Apontamento {
   tempo_minutos: number | null
   observacao: string | null
   tamanho_op: number | null
+  /** Códigos de materiais perdidos (grupo "Outros"), separados por vírgula */
+  materiais_perdidos: string | null
 }
 
 export interface NovoApontamento {
@@ -56,6 +58,7 @@ export interface NovoApontamento {
   tempo_minutos: number | null
   observacao: string | null
   tamanho_op: number | null
+  materiais_perdidos: string | null
 }
 
 // ─── CEP ───────────────────────────────────────────────────────────────────

@@ -33,6 +33,7 @@ const CORES_GRUPO: Record<string, string> = {
   'Polimento': '#56A4BB',
   'Problemas Dimensionais': '#f97316',
   'Clivagem': '#ef4444',
+  'Outros': '#64748b',
 }
 
 const PALETA = ['#56A4BB', '#ef4444', '#eab308', '#8b5cf6', '#f97316', '#06b6d4', '#10b981', '#f43f5e']
@@ -269,7 +270,7 @@ export default function DashboardPage() {
     // Enriquecer cada apontamento com custo calculado
     const ricos: ApontamentoRico[] = dados.map(a => {
       const fibra = a.fibra ?? 'F272'
-      const itens = calcularPerdaMateriais(a.tipo_desperdicio, fibra, a.quantidade_pecas, a.quantidade_ml)
+      const itens = calcularPerdaMateriais(a.tipo_desperdicio, fibra, a.quantidade_pecas, a.quantidade_ml, a.materiais_perdidos?.split(',') ?? null)
       return { ...a, custo: calcularCustoTotal(itens), diaFmt: fmtDia(a.created_at), horaFmt: fmtHora(a.created_at) }
     })
 
@@ -358,7 +359,7 @@ export default function DashboardPage() {
     const mMat = new Map<string, MatE>()
     ricos.forEach(a => {
       const fibra = a.fibra ?? 'F272'
-      calcularPerdaMateriais(a.tipo_desperdicio, fibra, a.quantidade_pecas, a.quantidade_ml).forEach(item => {
+      calcularPerdaMateriais(a.tipo_desperdicio, fibra, a.quantidade_pecas, a.quantidade_ml, a.materiais_perdidos?.split(',') ?? null).forEach(item => {
         const k = item.material.nome
         if (!mMat.has(k)) mMat.set(k, { nome: k, Custo: 0 })
         mMat.get(k)!.Custo += item.material.custo * item.quantidade

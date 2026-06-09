@@ -1,41 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 
-// ─── Cronômetro persistente ───────────────────────────────────────────────────
-const TIMER_KEY = 'kaizen-timer-retrabalho'
-
-interface TimerState {
-  status: 'parado' | 'rodando' | 'pausado'
-  elapsed: number
-  startAt: number | null
-}
-
-const TIMER_INICIAL: TimerState = { status: 'parado', elapsed: 0, startAt: null }
-
-function loadTimer(): TimerState {
-  try {
-    const raw = localStorage.getItem(TIMER_KEY)
-    if (raw) return JSON.parse(raw) as TimerState
-  } catch {}
-  return TIMER_INICIAL
-}
-
-function saveTimer(t: TimerState) {
-  try { localStorage.setItem(TIMER_KEY, JSON.stringify(t)) } catch {}
-}
-
-function formatMs(ms: number): string {
-  const totalSec = Math.floor(ms / 1000)
-  const h = Math.floor(totalSec / 3600)
-  const m = Math.floor((totalSec % 3600) / 60)
-  const s = totalSec % 60
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-import { salvarTempoRetrabalhoPolimento } from '@/app/actions'
-import { GRUPOS_DESPERDICIO } from '@/lib/desperdicios'
+import { GRUPOS_DESPERDICIO, GRUPO_OUTROS } from '@/lib/desperdicios'
+import { opcoesMateriaisOutros } from '@/lib/materiais'
 import type { Classificacao, NovoApontamento, TipoDesperdicio, TipoFibra } from '@/lib/types'
 import EtapaIndicador from './EtapaIndicador'
 import BotaoGrande from './BotaoGrande'
@@ -57,6 +25,8 @@ const LABELS_ETAPA: Record<TipoEtapa, string> = {
 const OPERADORAS = ['Janete', 'Poliana', 'Alice', 'Bruna Nascimento', 'Bruna Fernanda', 'Taísa', 'Beatriz']
 
 function getSequencia(tipo: TipoDesperdicio | null): TipoEtapa[] {
+  // "Outros" tem fluxo próprio: sem etapa de tipo, vai direto para operadora → coleta → confirmar
+  if (tipo?.input === 'outros') return ['grupo', 'operadora', 'quantidade', 'confirmar']
   const base: TipoEtapa[] = ['grupo', 'tipo', 'operadora', 'quantidade']
   if (!tipo) return [...base, 'confirmar']
   if (tipo.segunda_quantidade && tipo.input !== 'contador_duplo') base.push('segunda_quantidade')
@@ -84,54 +54,6 @@ interface Props {
 }
 
 export default function FormularioApontamento({ op, fibra, operador, tamanho, onSalvar }: Props) {
-  // ── Cronômetro ──────────────────────────────────────────────────────────────
-  const [timer, setTimer] = useState<TimerState>(TIMER_INICIAL)
-  const [agora, setAgora] = useState(Date.now())
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => { setTimer(loadTimer()) }, [])
-
-  useEffect(() => {
-    if (timer.status === 'rodando') {
-      tickRef.current = setInterval(() => setAgora(Date.now()), 500)
-    } else {
-      if (tickRef.current) clearInterval(tickRef.current)
-    }
-    return () => { if (tickRef.current) clearInterval(tickRef.current) }
-  }, [timer.status])
-
-  const displayMs = timer.status === 'rodando' && timer.startAt != null
-    ? timer.elapsed + (agora - timer.startAt)
-    : timer.elapsed
-
-  function iniciarTimer() {
-    const novo: TimerState = { status: 'rodando', elapsed: timer.elapsed, startAt: Date.now() }
-    setTimer(novo); saveTimer(novo)
-  }
-  function pausarTimer() {
-    const elapsed = timer.elapsed + (timer.startAt != null ? Date.now() - timer.startAt : 0)
-    const novo: TimerState = { status: 'pausado', elapsed, startAt: null }
-    setTimer(novo); saveTimer(novo)
-  }
-  async function concluirTimer() {
-    // Captura o tempo final (mesmo se ainda estava rodando)
-    const finalMs = timer.status === 'rodando' && timer.startAt != null
-      ? timer.elapsed + (Date.now() - timer.startAt)
-      : timer.elapsed
-
-    if (finalMs >= 1000) { // só salva se tiver pelo menos 1 segundo
-      const tempo_minutos = parseFloat((finalMs / 60000).toFixed(2))
-      const custo_hh = parseFloat(((finalMs / 3600000) * 17).toFixed(2))
-      const r = await salvarTempoRetrabalhoPolimento({ numero_op: op, tempo_ms: finalMs, tempo_minutos, custo_hh })
-        .catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
-      if (!r.ok) console.error('[concluirTimer] Falha ao salvar tempo:', r.error)
-      // Não bloqueia o reset mesmo em caso de erro — o cronômetro precisa zerar para a operadora seguir
-    }
-
-    setTimer(TIMER_INICIAL)
-    saveTimer(TIMER_INICIAL)
-  }
-
   // ── Formulário ───────────────────────────────────────────────────────────────
   const [etapa, setEtapa] = useState(0)
   const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null)
@@ -141,6 +63,8 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
   const [segundaQuantidade, setSegundaQuantidade] = useState('')
   const [classificacao, setClassificacao] = useState<Classificacao | null>(null)
   const [tempoMinutos, setTempoMinutos] = useState('')
+  const [materiaisSelecionados, setMateriaisSelecionados] = useState<string[]>([])
+  const [observacao, setObservacao] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [sucesso, setSucesso] = useState(false)
 
@@ -161,7 +85,15 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
     setSegundaQuantidade('')
     setClassificacao(null)
     setTempoMinutos('')
+    setMateriaisSelecionados([])
+    setObservacao('')
     setSucesso(false)
+  }
+
+  function toggleMaterial(codigo: string) {
+    setMateriaisSelecionados(prev =>
+      prev.includes(codigo) ? prev.filter(c => c !== codigo) : [...prev, codigo]
+    )
   }
 
   async function confirmar() {
@@ -195,6 +127,9 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
         return
       }
 
+      const ehOutros = tipoSelecionado.input === 'outros'
+      const obsTrim = observacao.trim()
+
       const ok = await onSalvar({
         grupo: grupoSelecionado,
         tipo_desperdicio: tipoSelecionado.nome,
@@ -206,8 +141,9 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
         classificacao: tipoSelecionado.classificacao_fixa
           ?? (tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null),
         tempo_minutos: toIntOuNull(tempoMinutos),
-        observacao: null,
+        observacao: ehOutros && obsTrim !== '' ? obsTrim : null,
         tamanho_op: tamanho ?? null,
+        materiais_perdidos: ehOutros && materiaisSelecionados.length > 0 ? materiaisSelecionados.join(',') : null,
       })
       // Só vai para a tela de sucesso se realmente salvou
       if (ok !== false) setSucesso(true)
@@ -225,6 +161,8 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
       case 'quantidade':
         // Duplo: basta um dos dois campos ter valor (permite só perda, sem retrabalho)
         if (tipoSelecionado?.input === 'contador_duplo') return parseInt(quantidade || '0') > 0 || parseInt(segundaQuantidade || '0') > 0
+        // Outros: exige a quantidade de perda > 0 (materiais e observação são opcionais)
+        if (tipoSelecionado?.input === 'outros') return parseInt(quantidade || '0') > 0
         return quantidade.length > 0
       case 'segunda_quantidade': return segundaQuantidade.length > 0
       case 'classificacao': return !!classificacao
@@ -295,7 +233,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {GRUPOS_DESPERDICIO.map((g) => (
+            {GRUPOS_DESPERDICIO.filter((g) => g.nome !== GRUPO_OUTROS).map((g) => (
               <BotaoGrande
                 key={g.nome}
                 label={g.nome}
@@ -305,101 +243,44 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
                   setTipoSelecionado(null)
                   setQuantidade('')
                   setSegundaQuantidade('')
+                  setMateriaisSelecionados([])
+                  setObservacao('')
                   avancar()
                 }}
               />
             ))}
           </div>
 
-          {/* ── Cronômetro de Retrabalho ─────────────────────────── */}
-          <div
-            className="rounded-xl p-4 flex flex-col gap-3 transition-colors"
-            style={{
-              border: `2px solid ${
-                timer.status === 'rodando' ? 'var(--brand-primary)' :
-                timer.status === 'pausado' ? 'var(--signal-amber)' :
-                'var(--line)'
-              }`,
-              background: timer.status === 'rodando'
-                ? 'var(--brand-primary-tint)'
-                : timer.status === 'pausado'
-                  ? 'var(--signal-amber-soft)'
-                  : 'var(--bg-page)',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{
-                  background: timer.status === 'rodando'
-                    ? 'var(--brand-primary)'
-                    : timer.status === 'pausado'
-                      ? 'var(--signal-amber)'
-                      : 'var(--line-strong)',
-                  ...(timer.status === 'rodando' ? { animation: 'pulse-dot 1.6s ease-in-out infinite' } : {}),
+          {/* ── Botão "Outros" (ocupa o lugar do antigo cronômetro) ───────── */}
+          {(() => {
+            const grupoOutros = GRUPOS_DESPERDICIO.find((g) => g.nome === GRUPO_OUTROS)
+            const tipoOutros = grupoOutros?.tipos[0]
+            if (!tipoOutros) return null
+            const ativo = grupoSelecionado === GRUPO_OUTROS
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  setGrupoSelecionado(GRUPO_OUTROS)
+                  setTipoSelecionado(tipoOutros)
+                  setQuantidade('')
+                  setSegundaQuantidade('')
+                  setMateriaisSelecionados([])
+                  setObservacao('')
+                  avancar()
                 }}
-              />
-              <p
-                className="text-xs font-bold uppercase tracking-wider"
-                style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-mono)' }}
+                className="w-full rounded-xl px-4 py-5 flex items-center justify-center gap-2 font-bold text-base transition-all active:scale-[0.97]"
+                style={{
+                  background: ativo ? 'var(--brand-primary)' : '#fff',
+                  color: ativo ? '#fff' : 'var(--text-strong)',
+                  border: `2px dashed ${ativo ? 'var(--brand-primary)' : 'var(--line-strong)'}`,
+                  fontFamily: 'var(--font-display)',
+                }}
               >
-                Retrabalho Manual Pós Máquina
-              </p>
-            </div>
-
-            <p
-              className="text-5xl font-black tabular-nums text-center py-2"
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: timer.status === 'rodando'
-                  ? 'var(--brand-primary)'
-                  : timer.status === 'pausado'
-                    ? 'var(--signal-amber)'
-                    : 'var(--line-strong)',
-              }}
-            >
-              {formatMs(displayMs)}
-            </p>
-
-            <div className="flex gap-2">
-              {timer.status === 'parado' && (
-                <button
-                  onClick={iniciarTimer}
-                  className="flex-1 font-bold py-3 rounded-xl transition-all active:scale-[0.97] flex items-center justify-center gap-2"
-                  style={{ background: 'var(--brand-primary)', color: '#fff', fontFamily: 'var(--font-display)' }}
-                >
-                  <IconPlay /> Iniciar
-                </button>
-              )}
-              {timer.status === 'rodando' && (
-                <button
-                  onClick={pausarTimer}
-                  className="flex-1 font-bold py-3 rounded-xl transition-all active:scale-[0.97] flex items-center justify-center gap-2"
-                  style={{ background: 'var(--signal-amber)', color: '#fff', fontFamily: 'var(--font-display)' }}
-                >
-                  <IconPause /> Pausar
-                </button>
-              )}
-              {timer.status === 'pausado' && (
-                <button
-                  onClick={iniciarTimer}
-                  className="flex-1 font-bold py-3 rounded-xl transition-all active:scale-[0.97] flex items-center justify-center gap-2"
-                  style={{ background: 'var(--brand-primary)', color: '#fff', fontFamily: 'var(--font-display)' }}
-                >
-                  <IconPlay /> Retomar
-                </button>
-              )}
-              {timer.status !== 'parado' && (
-                <button
-                  onClick={concluirTimer}
-                  className="flex-1 font-bold py-3 rounded-xl transition-all active:scale-[0.97] flex items-center justify-center gap-2"
-                  style={{ background: 'var(--signal-red)', color: '#fff', fontFamily: 'var(--font-display)' }}
-                >
-                  <IconCheck /> Concluir
-                </button>
-              )}
-            </div>
-          </div>
+                + Outros — perda de materiais
+              </button>
+            )
+          })()}
         </div>
       )}
 
@@ -565,7 +446,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
       )}
 
       {/* ── QUANTIDADE — teclado numérico ─────────────────────────────── */}
-      {etapaAtual === 'quantidade' && tipoSelecionado && tipoSelecionado.input !== 'contador' && tipoSelecionado.input !== 'contador_duplo' && (
+      {etapaAtual === 'quantidade' && tipoSelecionado && tipoSelecionado.input !== 'contador' && tipoSelecionado.input !== 'contador_duplo' && tipoSelecionado.input !== 'outros' && (
         <TecladoNumerico
           label={labelQtdPrincipal}
           valor={quantidade}
@@ -577,6 +458,86 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
           autoFocus
           onEnter={() => { if (podeContinuar()) avancar() }}
         />
+      )}
+
+      {/* ── QUANTIDADE — grupo "Outros" (perda + materiais + observação) ──── */}
+      {etapaAtual === 'quantidade' && tipoSelecionado?.input === 'outros' && (
+        <div className="flex flex-col gap-5">
+          <ContadorSimples
+            label="Quantidade perdida (peças)"
+            valor={quantidade}
+            setValor={setQuantidade}
+            cor="var(--signal-red)"
+          />
+
+          <div className="border-t" style={{ borderColor: 'var(--line)' }} />
+
+          {/* Materiais perdidos (marcar um ou mais) */}
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+              Quais materiais foram perdidos?
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {opcoesMateriaisOutros(fibra).map((m) => {
+                const marcado = materiaisSelecionados.includes(m.codigo)
+                return (
+                  <button
+                    key={m.codigo}
+                    type="button"
+                    onClick={() => toggleMaterial(m.codigo)}
+                    className="rounded-xl px-3 py-3 flex items-center gap-2.5 text-left transition-all active:scale-[0.97]"
+                    style={{
+                      background: marcado ? 'var(--brand-primary)' : '#fff',
+                      color: marcado ? '#fff' : 'var(--text-strong)',
+                      border: `2px solid ${marcado ? 'var(--brand-primary)' : 'var(--line)'}`,
+                      fontFamily: 'var(--font-display)',
+                    }}
+                  >
+                    <span
+                      className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+                      style={{
+                        background: marcado ? 'rgba(255,255,255,0.2)' : 'var(--bg-page)',
+                        border: `1px solid ${marcado ? 'rgba(255,255,255,0.4)' : 'var(--line-strong)'}`,
+                      }}
+                    >
+                      {marcado && <IconCheck />}
+                    </span>
+                    <span className="font-bold text-sm leading-tight">{m.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="border-t" style={{ borderColor: 'var(--line)' }} />
+
+          {/* Observação — motivo da perda */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+              Observação (motivo da perda)
+            </label>
+            <textarea
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Descreva o que aconteceu…"
+              rows={3}
+              maxLength={500}
+              className="w-full rounded-xl px-4 py-3 text-base resize-none"
+              style={{ background: '#fff', border: '2px solid var(--line)', color: 'var(--text-strong)', fontFamily: 'var(--font-body)' }}
+            />
+          </div>
+
+          {/* Navegação embutida */}
+          <div className="flex gap-3 pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
+            <BtnNav label="← Voltar" onClick={voltar} variante="secundario" />
+            <BtnNav
+              label="Continuar →"
+              onClick={avancar}
+              variante="primario"
+              disabled={parseInt(quantidade || '0') === 0}
+            />
+          </div>
+        </div>
       )}
 
       {/* ── SEGUNDA QUANTIDADE ────────────────────────────────────────── */}
@@ -698,6 +659,17 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
                 {tipoSelecionado?.segunda_quantidade && (tipoSelecionado.input === 'contador_duplo' || segundaQuantidade) && (
                   <LinhaConfirm label={tipoSelecionado.segunda_quantidade.label} valor={segundaQuantidade || '0'} mono />
                 )}
+                {tipoSelecionado?.input === 'outros' && (
+                  <LinhaConfirm
+                    label="Materiais perdidos"
+                    valor={materiaisSelecionados.length > 0
+                      ? opcoesMateriaisOutros(fibra).filter(m => materiaisSelecionados.includes(m.codigo)).map(m => m.label).join(', ')
+                      : 'Nenhum'}
+                  />
+                )}
+                {tipoSelecionado?.input === 'outros' && observacao.trim() !== '' && (
+                  <LinhaConfirm label="Observação" valor={observacao.trim()} />
+                )}
                 {tipoSelecionado?.classificacao_fixa && (
                   <LinhaConfirm label="Classificação" valor={tipoSelecionado.classificacao_fixa.toUpperCase()} />
                 )}
@@ -734,7 +706,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
       {/* ── BARRA DE NAVEGAÇÃO ─────────────────────────────────────────── */}
       <div
         className={`flex gap-3 mt-2 ${
-          etapaAtual === 'quantidade' && tipoSelecionado?.input === 'contador_duplo' ? 'hidden' : ''
+          etapaAtual === 'quantidade' && (tipoSelecionado?.input === 'contador_duplo' || tipoSelecionado?.input === 'outros') ? 'hidden' : ''
         }`}
       >
         {etapa > 0 && (
@@ -876,33 +848,10 @@ function PillTag({ label, cor, textCor }: { label: string; cor: string; textCor:
 }
 
 // ─── Mini ícones SVG (sem emoji) ─────────────────────────────────────────────
-function IconPlay() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M7 5l12 7-12 7V5z" />
-    </svg>
-  )
-}
-function IconPause() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <rect x="6" y="5" width="4" height="14" rx="1" />
-      <rect x="14" y="5" width="4" height="14" rx="1" />
-    </svg>
-  )
-}
 function IconCheck() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12l4.5 4.5L19 7" />
-    </svg>
-  )
-}
-function IconBox() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8C2B2A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 8l9-5 9 5v8l-9 5-9-5V8z" />
-      <path d="M3 8l9 5 9-5M12 13v9" opacity="0.6" />
     </svg>
   )
 }
