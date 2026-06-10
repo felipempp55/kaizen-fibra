@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Apontamento } from './types'
-import { calcularPerdaMateriais, calcularCustoTotal, formatarReal } from './materiais'
+import { calcularPerdaMateriais, calcularCustoTotal, formatarReal, materialPorCodigo } from './materiais'
 import { TIPOS_DUPLO_RETRABALHO_PERDA } from './desperdicios'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -350,6 +350,39 @@ export async function gerarRelatorioPDF(
     },
     margin: { left: PL, right: PR },
   })
+
+  // ── OBSERVAÇÕES (grupo "Outros") ──────────────────────────────────────────
+  const comObs = sorted.filter(a => a.observacao && a.observacao.trim() !== '')
+  if (comObs.length > 0) {
+    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+    y = checkPage(doc, y, 20)
+    y = sectionTitle(doc, 'Observações — Perdas em "Outros"', y)
+    autoTable(doc, {
+      startY: y,
+      head: [['Data/Hora', 'Operadora', 'Qtd', 'Materiais', 'Observação']],
+      body: comObs.map(a => {
+        const mats = (a.materiais_perdidos?.split(',') ?? [])
+          .map(c => materialPorCodigo(c.trim())?.nome ?? c.trim())
+          .join(', ')
+        return [
+          fmtDt(a.created_at),
+          nomeDisplay(a.nome_operador),
+          String(a.quantidade_pecas ?? 0),
+          mats || '—',
+          a.observacao ?? '',
+        ]
+      }),
+      theme: 'striped',
+      headStyles: { fillColor: COR_DEEP, fontSize: 7, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 6.5 },
+      columnStyles: {
+        0: { cellWidth: 26 },
+        2: { halign: 'center', cellWidth: 12 },
+        3: { cellWidth: 40 },
+      },
+      margin: { left: PL, right: PR },
+    })
+  }
 
   // ── RODAPÉ em todas as páginas ────────────────────────────────────────────
   const totalPags = (doc as jsPDF & { internal: { getNumberOfPages: () => number } }).internal.getNumberOfPages()

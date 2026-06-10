@@ -1300,7 +1300,8 @@ export default function DashboardPage() {
                       <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>OP</th>
                       <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Tipo</th>
                       <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Operadora</th>
-                      <th className="text-right px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Qtd</th>
+                      <th className="text-right px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Qtd</th>
+                      <th className="text-left px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Observação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1319,7 +1320,8 @@ export default function DashboardPage() {
                             <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--text-body)', fontFamily: 'var(--font-mono)' }}>{a.numero_op}</td>
                             <td className="px-3 py-2.5 font-semibold" style={{ color: 'var(--text-strong)' }}>{a.tipo_desperdicio}</td>
                             <td className="px-3 py-2.5" style={{ color: 'var(--text-body)' }}>{operadoraDisplay}</td>
-                            <td className="px-5 py-2.5 text-right whitespace-nowrap">{formatarQtdApontamento(a)}</td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatarQtdApontamento(a)}</td>
+                            <td className="px-5 py-2.5" style={{ color: 'var(--text-body)', maxWidth: 280 }}>{a.observacao ?? ''}</td>
                           </tr>
                         )
                       })}

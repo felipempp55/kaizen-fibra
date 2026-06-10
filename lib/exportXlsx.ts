@@ -1,9 +1,17 @@
 import * as XLSX from 'xlsx'
 import type { Apontamento } from './types'
-import { calcularPerdaMateriais, calcularCustoTotal } from './materiais'
+import { calcularPerdaMateriais, calcularCustoTotal, materialPorCodigo } from './materiais'
 
 function nomeDisplay(s: string) {
   return s.trim().replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// Converte os códigos de materiais perdidos (grupo "Outros") em nomes legíveis
+function materiaisDisplay(codigos: string | null): string {
+  if (!codigos) return ''
+  return codigos.split(',')
+    .map(c => materialPorCodigo(c.trim())?.nome ?? c.trim())
+    .join(', ')
 }
 
 export function exportarXlsx(apontamentos: Apontamento[]) {
@@ -32,11 +40,13 @@ export function exportarXlsx(apontamentos: Apontamento[]) {
       'Qtd ML':                  a.quantidade_ml ?? 0,
       'Classificação':           a.classificacao ?? '',
       'Tempo Retrabalho (min)':  a.tempo_minutos ?? 0,
+      'Materiais (Outros)':      materiaisDisplay(a.materiais_perdidos),
+      'Observação':              a.observacao ?? '',
       'Custo Estimado (R$)':     parseFloat(custo.toFixed(2)),
     }
   })
   const ws1 = XLSX.utils.json_to_sheet(sheet1)
-  ws1['!cols'] = [10, 8, 12, 8, 14, 16, 26, 18, 10, 8, 14, 20, 18].map(w => ({ wch: w }))
+  ws1['!cols'] = [10, 8, 12, 8, 14, 16, 26, 18, 10, 8, 14, 20, 28, 40, 18].map(w => ({ wch: w }))
   XLSX.utils.book_append_sheet(wb, ws1, 'Apontamentos')
 
   // ── Sheet 2: Resumo por tipo ──────────────────────────────────────────────

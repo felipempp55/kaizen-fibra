@@ -696,6 +696,11 @@ export default function Home() {
                               <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CORES_GRUPO[a.grupo] ?? 'var(--brand-primary)' }} />
                               <span className="font-semibold" style={{ color: 'var(--text-strong)' }}>{a.tipo_desperdicio}</span>
                             </span>
+                            {a.observacao && (
+                              <span className="block text-xs mt-0.5 pl-3 italic" style={{ color: 'var(--text-muted)' }}>
+                                &ldquo;{a.observacao}&rdquo;
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5" style={{ color: 'var(--text-body)' }}>{operadoraDisplay}</td>
                           <td className="px-5 py-2.5 text-right whitespace-nowrap">{formatarQtdApontamento(a)}</td>
