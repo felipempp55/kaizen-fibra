@@ -21,6 +21,8 @@ export interface TipoDesperdicio {
   input?: OpcaoInput
   /** Permite entrada decimal (vírgula) na quantidade principal */
   decimal?: boolean
+  /** Pula o passo de materiais + observação (ex: Epóxi em ml, que é líquido) */
+  semExtras?: boolean
 }
 
 export interface GrupoDesperdicio {

@@ -33,7 +33,7 @@ function getSequencia(tipo: TipoDesperdicio | null): TipoEtapa[] {
   if (tipo.segunda_quantidade && tipo.input !== 'contador_duplo') base.push('segunda_quantidade')
   if (tipo.classificacao !== 'nenhum') base.push('classificacao')
   if (tipo.tempo === 'sempre') base.push('tempo')
-  base.push('extras')   // materiais perdidos + observação (todos os tipos)
+  if (!tipo.semExtras) base.push('extras')   // materiais perdidos + observação
   base.push('confirmar')
   return base
 }

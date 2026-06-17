@@ -23,6 +23,7 @@ export const GRUPOS_DESPERDICIO: GrupoDesperdicio[] = [
         classificacao: 'nenhum',
         tempo: 'nunca',
         decimal: true,
+        semExtras: true,   // líquido (ml) — não tem materiais para marcar
       },
     ],
   },
