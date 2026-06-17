@@ -1,4 +1,5 @@
 import type { TipoFibra } from './types'
+import { TIPOS_DUPLO_RETRABALHO_PERDA } from './desperdicios'
 
 // ─── Cadastro de materiais ────────────────────────────────────────────────────
 
@@ -93,29 +94,33 @@ export function calcularPerdaMateriais(
   fibra: TipoFibra,
   quantidade_pecas: number | null,
   quantidade_ml: number | null,
-  materiaisCodigos?: string[] | null,   // usado só pelo grupo "Outros"
+  materiaisCodigos?: string[] | null,
 ): ItemPerda[] {
   const qP = quantidade_pecas ?? 0
   const qM = quantidade_ml   ?? 0
 
-  switch (tipo_desperdicio) {
-
-    case 'Outros': {
-      // qP = peças perdidas; custo = perda × cada material marcado pela operadora
-      if (qP <= 0 || !materiaisCodigos || materiaisCodigos.length === 0) return []
-      const itens: ItemPerda[] = []
-      for (const cod of materiaisCodigos) {
-        const mat = materialPorCodigo(cod.trim())
-        if (mat) itens.push({ material: mat, quantidade: qP })
-      }
-      return consolidar(itens)
+  // ── Modelo atual: custo = materiais marcados pela operadora × quantidade PERDIDA ──
+  // Vale para qualquer apontamento com a coluna materiais_perdidos preenchida (mesmo
+  // que vazia). Apontamentos antigos (coluna nula) caem no cálculo legado abaixo.
+  if (materiaisCodigos != null) {
+    // "Perda" é a 2ª quantidade (quantidade_ml) nos tipos retrabalho+perda; senão, a principal.
+    const perda = TIPOS_DUPLO_RETRABALHO_PERDA.includes(tipo_desperdicio) ? qM : qP
+    if (perda <= 0) return []
+    const itens: ItemPerda[] = []
+    for (const cod of materiaisCodigos) {
+      const mat = materialPorCodigo(cod.trim())
+      if (mat) itens.push({ material: mat, quantidade: perda })
     }
+    return consolidar(itens)
+  }
+
+  // ── Cálculo legado (apontamentos antigos, sem materiais marcados) ──
+  switch (tipo_desperdicio) {
 
     case 'Entupimento do Ferrule':
       return smaBasico(fibra, qP)
 
     case 'Máquina':
-      // qMl = peças perdidas no retrabalho
       return smaCompleto(fibra, qM)
 
     case 'Recuo de Fibra':
@@ -125,8 +130,6 @@ export function calcularPerdaMateriais(
       return smaCompleto(fibra, qP)
 
     case 'Crimpagem': {
-      // qP = peças perdidas → SMA completo + Hub
-      // qM = peças para manutenção → Hub apenas
       const itens: ItemPerda[] = [
         ...smaCompleto(fibra, qP),
         ...(qP > 0 ? [{ material: MATERIAIS.HUB, quantidade: qP }] : []),
@@ -135,14 +138,9 @@ export function calcularPerdaMateriais(
       return consolidar(itens)
     }
 
-    case 'Clivagem com Defeito':   // tipo legado (mantido p/ histórico)
+    case 'Clivagem com Defeito':
     case 'Clivagem Distal':
-      // qM = peças perdidas → Cânula (MP374, "Fibra")
       return qM > 0 ? [{ material: MATERIAIS.CANULA, quantidade: qM }] : []
-
-    case 'Clivagem Proximal':
-      // Sem material atrelado ainda (aguardando informações)
-      return []
 
     default:
       return []
@@ -159,11 +157,11 @@ export function formatarReal(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-// ─── Grupo "Outros" ─────────────────────────────────────────────────────────────
-// Opções de materiais que a operadora pode marcar como perdidos.
+// ─── Materiais marcáveis ────────────────────────────────────────────────────────
+// Opções de materiais que a operadora pode marcar como perdidos (em qualquer tipo).
 // Parte B e Ferrule são resolvidos pela fibra da OP. "Fibra" é como a produção
 // chama a Cânula (MP374).
-export function opcoesMateriaisOutros(fibra: TipoFibra): { codigo: string; label: string }[] {
+export function opcoesMateriais(fibra: TipoFibra): { codigo: string; label: string }[] {
   return [
     { codigo: MATERIAIS.PARTE_A.codigo,   label: 'Parte A' },
     { codigo: parteB(fibra).codigo,       label: 'Parte B' },

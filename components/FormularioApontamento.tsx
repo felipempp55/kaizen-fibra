@@ -3,13 +3,13 @@
 import { useState } from 'react'
 
 import { GRUPOS_DESPERDICIO, GRUPO_OUTROS } from '@/lib/desperdicios'
-import { opcoesMateriaisOutros } from '@/lib/materiais'
+import { opcoesMateriais } from '@/lib/materiais'
 import type { Classificacao, NovoApontamento, TipoDesperdicio, TipoFibra } from '@/lib/types'
 import EtapaIndicador from './EtapaIndicador'
 import BotaoGrande from './BotaoGrande'
 import TecladoNumerico from './TecladoNumerico'
 
-type TipoEtapa = 'grupo' | 'tipo' | 'operadora' | 'quantidade' | 'segunda_quantidade' | 'classificacao' | 'tempo' | 'confirmar'
+type TipoEtapa = 'grupo' | 'tipo' | 'operadora' | 'quantidade' | 'segunda_quantidade' | 'classificacao' | 'tempo' | 'extras' | 'confirmar'
 
 const LABELS_ETAPA: Record<TipoEtapa, string> = {
   grupo: 'Grupo',
@@ -19,19 +19,21 @@ const LABELS_ETAPA: Record<TipoEtapa, string> = {
   segunda_quantidade: 'Adicional',
   classificacao: 'Classificação',
   tempo: 'Tempo',
+  extras: 'Materiais',
   confirmar: 'Confirmar',
 }
 
 const OPERADORAS = ['Janete', 'Poliana', 'Alice', 'Bruna Nascimento', 'Bruna Fernanda', 'Taísa', 'Beatriz']
 
 function getSequencia(tipo: TipoDesperdicio | null): TipoEtapa[] {
-  // "Outros" tem fluxo próprio: sem etapa de tipo, vai direto para operadora → coleta → confirmar
-  if (tipo?.input === 'outros') return ['grupo', 'operadora', 'quantidade', 'confirmar']
+  // "Outros" tem fluxo próprio: sem etapa de tipo
+  if (tipo?.input === 'outros') return ['grupo', 'operadora', 'quantidade', 'extras', 'confirmar']
   const base: TipoEtapa[] = ['grupo', 'tipo', 'operadora', 'quantidade']
   if (!tipo) return [...base, 'confirmar']
   if (tipo.segunda_quantidade && tipo.input !== 'contador_duplo') base.push('segunda_quantidade')
   if (tipo.classificacao !== 'nenhum') base.push('classificacao')
   if (tipo.tempo === 'sempre') base.push('tempo')
+  base.push('extras')   // materiais perdidos + observação (todos os tipos)
   base.push('confirmar')
   return base
 }
@@ -127,7 +129,6 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
         return
       }
 
-      const ehOutros = tipoSelecionado.input === 'outros'
       const obsTrim = observacao.trim()
 
       const ok = await onSalvar({
@@ -141,9 +142,11 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
         classificacao: tipoSelecionado.classificacao_fixa
           ?? (tipoSelecionado.classificacao !== 'nenhum' ? classificacao : null),
         tempo_minutos: toIntOuNull(tempoMinutos),
-        observacao: ehOutros && obsTrim !== '' ? obsTrim : null,
+        observacao: obsTrim !== '' ? obsTrim : null,
         tamanho_op: tamanho ?? null,
-        materiais_perdidos: ehOutros && materiaisSelecionados.length > 0 ? materiaisSelecionados.join(',') : null,
+        // Sempre salva a coluna (mesmo vazia) → marca o apontamento como "modelo manual".
+        // Apontamentos antigos têm essa coluna nula e mantêm o cálculo legado.
+        materiais_perdidos: materiaisSelecionados.join(','),
       })
       // Só vai para a tela de sucesso se realmente salvou
       if (ok !== false) setSucesso(true)
@@ -460,7 +463,7 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
         />
       )}
 
-      {/* ── QUANTIDADE — grupo "Outros" (perda + materiais + observação) ──── */}
+      {/* ── QUANTIDADE — grupo "Outros" (só o contador de perda) ──────────── */}
       {etapaAtual === 'quantidade' && tipoSelecionado?.input === 'outros' && (
         <div className="flex flex-col gap-5">
           <ContadorSimples
@@ -470,15 +473,29 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
             cor="var(--signal-red)"
           />
 
-          <div className="border-t" style={{ borderColor: 'var(--line)' }} />
+          {/* Navegação embutida */}
+          <div className="flex gap-3 pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
+            <BtnNav label="← Voltar" onClick={voltar} variante="secundario" />
+            <BtnNav
+              label="Continuar →"
+              onClick={avancar}
+              variante="primario"
+              disabled={parseInt(quantidade || '0') === 0}
+            />
+          </div>
+        </div>
+      )}
 
+      {/* ── EXTRAS — materiais perdidos + observação (todos os tipos) ──────── */}
+      {etapaAtual === 'extras' && (
+        <div className="flex flex-col gap-5">
           {/* Materiais perdidos (marcar um ou mais) */}
           <div className="flex flex-col gap-2">
             <p className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
               Quais materiais foram perdidos?
             </p>
             <div className="grid grid-cols-2 gap-2.5">
-              {opcoesMateriaisOutros(fibra).map((m) => {
+              {opcoesMateriais(fibra).map((m) => {
                 const marcado = materiaisSelecionados.includes(m.codigo)
                 return (
                   <button
@@ -511,30 +528,19 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
 
           <div className="border-t" style={{ borderColor: 'var(--line)' }} />
 
-          {/* Observação — motivo da perda */}
+          {/* Observação */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
-              Observação (motivo da perda)
+              Observação
             </label>
             <textarea
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
-              placeholder="Descreva o que aconteceu…"
+              placeholder="Descreva o que aconteceu… (opcional)"
               rows={3}
               maxLength={500}
               className="w-full rounded-xl px-4 py-3 text-base resize-none"
               style={{ background: '#fff', border: '2px solid var(--line)', color: 'var(--text-strong)', fontFamily: 'var(--font-body)' }}
-            />
-          </div>
-
-          {/* Navegação embutida */}
-          <div className="flex gap-3 pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
-            <BtnNav label="← Voltar" onClick={voltar} variante="secundario" />
-            <BtnNav
-              label="Continuar →"
-              onClick={avancar}
-              variante="primario"
-              disabled={parseInt(quantidade || '0') === 0}
             />
           </div>
         </div>
@@ -659,15 +665,13 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
                 {tipoSelecionado?.segunda_quantidade && (tipoSelecionado.input === 'contador_duplo' || segundaQuantidade) && (
                   <LinhaConfirm label={tipoSelecionado.segunda_quantidade.label} valor={segundaQuantidade || '0'} mono />
                 )}
-                {tipoSelecionado?.input === 'outros' && (
-                  <LinhaConfirm
-                    label="Materiais perdidos"
-                    valor={materiaisSelecionados.length > 0
-                      ? opcoesMateriaisOutros(fibra).filter(m => materiaisSelecionados.includes(m.codigo)).map(m => m.label).join(', ')
-                      : 'Nenhum'}
-                  />
-                )}
-                {tipoSelecionado?.input === 'outros' && observacao.trim() !== '' && (
+                <LinhaConfirm
+                  label="Materiais perdidos"
+                  valor={materiaisSelecionados.length > 0
+                    ? opcoesMateriais(fibra).filter(m => materiaisSelecionados.includes(m.codigo)).map(m => m.label).join(', ')
+                    : 'Nenhum'}
+                />
+                {observacao.trim() !== '' && (
                   <LinhaConfirm label="Observação" valor={observacao.trim()} />
                 )}
                 {tipoSelecionado?.classificacao_fixa && (

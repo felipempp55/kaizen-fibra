@@ -181,8 +181,9 @@ export default function Home() {
   const [authErro, setAuthErro] = useState(false)
   const [processando, setProcessando] = useState(false)
 
-  // Dados do cockpit (hoje)
+  // Dados do cockpit: "hoje" alimenta os KPIs/gráficos; "OP" alimenta a linha do tempo completa
   const [dadosHoje, setDadosHoje] = useState<Apontamento[]>([])
+  const [dadosOP, setDadosOP] = useState<Apontamento[]>([])
   const [carregandoDados, setCarregandoDados] = useState(false)
 
   // Modal de exportação (xlsx / pdf)
@@ -226,15 +227,19 @@ export default function Home() {
     setOpAtiva(curr => (curr && ops.some(o => o.numero === curr.numero)) ? curr : ops[0])
   }, [ops])
 
-  // Busca apontamentos de hoje para o cockpit
+  // Busca apontamentos do cockpit: hoje (KPIs) + OP completa (linha do tempo)
   useEffect(() => {
-    if (!opAtiva) { setDadosHoje([]); return }
+    if (!opAtiva) { setDadosHoje([]); setDadosOP([]); return }
     setCarregandoDados(true)
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
     supabase.from('apontamentos').select('*')
       .gte('created_at', hoje.toISOString())
       .eq('numero_op', opAtiva.numero)
       .then(({ data }) => { setDadosHoje(data ?? []); setCarregandoDados(false) })
+    // Histórico completo da OP (todas as datas) para a linha do tempo
+    supabase.from('apontamentos').select('*')
+      .eq('numero_op', opAtiva.numero)
+      .then(({ data }) => { setDadosOP(data ?? []) })
   }, [opAtiva])
 
   // Métricas derivadas
@@ -393,6 +398,9 @@ export default function Home() {
         const { data } = await supabase.from('apontamentos').select('*')
           .gte('created_at', hoje.toISOString()).eq('numero_op', opAtiva.numero)
         setDadosHoje(data ?? [])
+        const { data: dataOP } = await supabase.from('apontamentos').select('*')
+          .eq('numero_op', opAtiva.numero)
+        setDadosOP(dataOP ?? [])
       }
     } catch (e) {
       // Não bloqueia o sucesso — o INSERT já passou. Só loga.
@@ -657,40 +665,42 @@ export default function Home() {
 
         </div>
 
-        {/* ── Linha do Tempo — apontamentos do dia desta OP ───────────────── */}
+        {/* ── Linha do Tempo — histórico completo desta OP ────────────────── */}
         <div className="rounded-2xl overflow-hidden"
           style={{ background: '#fff', border: '1px solid var(--line)' }}>
           <div className="px-5 pt-5 pb-3 flex items-end justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>LINHA DO TEMPO · OP {opAtiva?.numero ?? ''}</p>
-              <p className="text-lg font-bold mt-0.5" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Apontamentos de Hoje</p>
+              <p className="text-lg font-bold mt-0.5" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Apontamentos da OP</p>
             </div>
             <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              {dadosHoje.length} {dadosHoje.length === 1 ? 'registro' : 'registros'}
+              {dadosOP.length} {dadosOP.length === 1 ? 'registro' : 'registros'}
             </span>
           </div>
-          {dadosHoje.length === 0 ? (
+          {dadosOP.length === 0 ? (
             <p className="text-center py-10 text-sm" style={{ color: 'var(--text-faint)' }}>Nenhum apontamento ainda</p>
           ) : (
             <div className="overflow-auto" style={{ maxHeight: 420 }}>
               <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
                 <thead className="sticky top-0 z-10">
                   <tr style={{ background: 'var(--bg-page)', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
-                    <th className="text-left px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Hora</th>
+                    <th className="text-left px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Data/Hora</th>
                     <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Tipo</th>
                     <th className="text-left px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Operadora</th>
                     <th className="text-right px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Qtd</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[...dadosHoje]
+                  {[...dadosOP]
                     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                     .map((a, i) => {
-                      const hora = new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                      const dt = new Date(a.created_at)
+                      const dataFmt = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                      const horaFmt = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
                       const operadoraDisplay = (a.nome_operador || '').trim().replace(/\b\w/g, c => c.toUpperCase())
                       return (
                         <tr key={a.id ?? i} style={{ borderBottom: '1px solid var(--line-soft)' }}>
-                          <td className="px-5 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{hora}</td>
+                          <td className="px-5 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{dataFmt} <span style={{ color: 'var(--text-strong)' }}>{horaFmt}</span></td>
                           <td className="px-3 py-2.5">
                             <span className="inline-flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CORES_GRUPO[a.grupo] ?? 'var(--brand-primary)' }} />
