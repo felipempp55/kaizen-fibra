@@ -18,6 +18,9 @@ export const MATERIAIS = {
   HUB:         { codigo: 'MP0000389', nome: 'Hub para Conector SMA',    custo:  5.72 } as Material,
   CANULA:      { codigo: 'MP0000374', nome: 'Cânula de Fibra Óptica',   custo: 26.49 } as Material,
   ALIVIADOR:   { codigo: 'MP0000383', nome: 'Aliviador de Tensão',      custo:  3.04 } as Material,
+  // Epóxi: custo por ML. Referência: 2,1 ml = US$ 5,23, convertido a R$ 5,50/USD.
+  // Taxa = (5,23 / 2,1) × 5,50 ≈ R$ 13,70 por ml.
+  EPOXI:       { codigo: 'EPOXI',     nome: 'Epóxi (por ml)',           custo: (5.23 / 2.1) * 5.50 } as Material,
 }
 
 // Busca um material pelo código (usado no grupo "Outros", onde a operadora escolhe os materiais)
@@ -98,6 +101,11 @@ export function calcularPerdaMateriais(
 ): ItemPerda[] {
   const qP = quantidade_pecas ?? 0
   const qM = quantidade_ml   ?? 0
+
+  // ── Epóxi desperdiçado: custo proporcional ao volume em ml (não tem materiais) ──
+  if (tipo_desperdicio === 'Quantidade desperdiçada de Epóxi') {
+    return qM > 0 ? [{ material: MATERIAIS.EPOXI, quantidade: qM }] : []
+  }
 
   // ── Modelo atual: custo = materiais marcados pela operadora × quantidade PERDIDA ──
   // Vale para qualquer apontamento com a coluna materiais_perdidos preenchida (mesmo
