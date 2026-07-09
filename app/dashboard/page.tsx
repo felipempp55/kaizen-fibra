@@ -221,7 +221,6 @@ export default function DashboardPage() {
   const [ini, setIni] = useState('')
   const [fim, setFim] = useState('')
   const [dados, setDados] = useState<Apontamento[]>([])
-  const [temposRetrabalho, setTemposRetrabalho] = useState<{ tempo_ms: number; custo_hh: number }[]>([])
   const [carregando, setCarregando] = useState(true)
   const [aba, setAba] = useState<Aba>('producao')
   const [filtroOp, setFiltroOp] = useState<'atual' | 'anterior' | null>(null)
@@ -244,21 +243,17 @@ export default function DashboardPage() {
   const buscar = useCallback(async () => {
     setCarregando(true)
     let query = supabase.from('apontamentos').select('*').order('created_at', { ascending: true })
-    let queryTempos = supabase.from('tempos_retrabalho_polimento').select('tempo_ms, custo_hh')
     if (filtroOp !== null && opsRecentes.length > 0) {
       const opNumero = filtroOp === 'atual' ? opsRecentes[0] : opsRecentes[1]
       if (opNumero) {
         query = query.eq('numero_op', opNumero)
-        queryTempos = queryTempos.eq('numero_op', opNumero)
-      } else { setDados([]); setTemposRetrabalho([]); setCarregando(false); return }
+      } else { setDados([]); setCarregando(false); return }
     } else {
       const { de, ate } = getIntervalo(periodo, ini, fim)
       query = query.gte('created_at', de).lte('created_at', ate)
-      queryTempos = queryTempos.gte('created_at', de).lte('created_at', ate)
     }
-    const [{ data }, { data: dataTempos }] = await Promise.all([query, queryTempos])
+    const { data } = await query
     setDados(data ?? [])
-    setTemposRetrabalho(dataTempos ?? [])
     setCarregando(false)
   }, [periodo, ini, fim, filtroOp, opsRecentes])
 
@@ -625,11 +620,17 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* ── Card: Retrabalho Manual Polimento ───────────────────────── */}
+            {/* ── Card: Retrabalho na Máquina · Polimento ─────────────────── */}
             {(() => {
-              const totalMs = temposRetrabalho.reduce((s, t) => s + t.tempo_ms, 0)
-              const totalCusto = temposRetrabalho.reduce((s, t) => s + t.custo_hh, 0)
-              const sessoes = temposRetrabalho.length
+              // Estimativa fixa: 1min20s (80s) por retrabalho apontado em Polimento → Máquina.
+              // O 1º campo (quantidade_pecas) desse tipo guarda a contagem de retrabalhos.
+              const SEG_POR_RETRABALHO = 80
+              const totalRetrabalhos = dados
+                .filter(a => a.tipo_desperdicio === 'Máquina')
+                .reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
+              const totalMs = totalRetrabalhos * SEG_POR_RETRABALHO * 1000
+              const totalCusto = (totalMs / 3600000) * 17
+              const sessoes = totalRetrabalhos
               return (
                 <div
                   className="rounded-2xl p-5 flex flex-col gap-4"
@@ -649,10 +650,10 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#92400e', fontFamily: 'var(--font-mono)' }}>
-                          RETRABALHO MANUAL · POLIMENTO
+                          RETRABALHO NA MÁQUINA · POLIMENTO
                         </p>
                         <p className="text-[10px]" style={{ color: '#b45309' }}>
-                          {sessoes === 0 ? 'Nenhuma sessão no período' : `${sessoes} sessão${sessoes !== 1 ? 'ões' : ''} registrada${sessoes !== 1 ? 's' : ''} no período`}
+                          {sessoes === 0 ? 'Nenhum retrabalho no período' : `${sessoes} retrabalho${sessoes !== 1 ? 's' : ''} no período · 1min20s cada`}
                         </p>
                       </div>
                     </div>
@@ -686,7 +687,7 @@ export default function DashboardPage() {
                       </p>
                       {sessoes > 0 && (
                         <p className="text-[10px]" style={{ color: '#b45309' }}>
-                          média {R(totalCusto / sessoes)} / sessão
+                          {sessoes} × 1min20s a R$ 17,00/h
                         </p>
                       )}
                     </div>
