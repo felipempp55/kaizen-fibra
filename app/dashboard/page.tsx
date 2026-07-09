@@ -622,15 +622,13 @@ export default function DashboardPage() {
 
             {/* ── Card: Retrabalho na Máquina · Polimento ─────────────────── */}
             {(() => {
-              // Estimativa fixa: 1min20s (80s) por retrabalho apontado em Polimento → Máquina.
-              // O 1º campo (quantidade_pecas) desse tipo guarda a contagem de retrabalhos.
+              // Estimativa fixa: 1min20s (80s) por apontamento de Polimento → Máquina
+              // (cada apontamento = 1 evento de retrabalho, independente da qtd de peças).
               const SEG_POR_RETRABALHO = 80
-              const totalRetrabalhos = dados
-                .filter(a => a.tipo_desperdicio === 'Máquina')
-                .reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
-              const totalMs = totalRetrabalhos * SEG_POR_RETRABALHO * 1000
+              const totalApontamentosMaquina = dados.filter(a => a.tipo_desperdicio === 'Máquina').length
+              const totalMs = totalApontamentosMaquina * SEG_POR_RETRABALHO * 1000
               const totalCusto = (totalMs / 3600000) * 17
-              const sessoes = totalRetrabalhos
+              const sessoes = totalApontamentosMaquina
               return (
                 <div
                   className="rounded-2xl p-5 flex flex-col gap-4"
@@ -653,7 +651,7 @@ export default function DashboardPage() {
                           RETRABALHO NA MÁQUINA · POLIMENTO
                         </p>
                         <p className="text-[10px]" style={{ color: '#b45309' }}>
-                          {sessoes === 0 ? 'Nenhum retrabalho no período' : `${sessoes} retrabalho${sessoes !== 1 ? 's' : ''} no período · 1min20s cada`}
+                          {sessoes === 0 ? 'Nenhum apontamento no período' : `${sessoes} apontamento${sessoes !== 1 ? 's' : ''} de Máquina · 1min20s cada`}
                         </p>
                       </div>
                     </div>
