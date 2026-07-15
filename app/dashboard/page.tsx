@@ -225,6 +225,15 @@ export default function DashboardPage() {
   const [aba, setAba] = useState<Aba>('producao')
   const [filtroOp, setFiltroOp] = useState<'atual' | 'anterior' | null>(null)
   const [opsRecentes, setOpsRecentes] = useState<string[]>([])
+  // Filtro de modo de falha (tipo de desperdício) — afeta só os gráficos de Perdas/Retrabalhos
+  const [modosFalhaExcluidos, setModosFalhaExcluidos] = useState<Set<string>>(new Set())
+  function toggleModoFalha(nome: string) {
+    setModosFalhaExcluidos(prev => {
+      const next = new Set(prev)
+      if (next.has(nome)) next.delete(nome); else next.add(nome)
+      return next
+    })
+  }
 
   const carregarOpsRecentes = useCallback(async () => {
     const desde = new Date(); desde.setDate(desde.getDate() - 90)
@@ -322,8 +331,32 @@ export default function DashboardPage() {
     const porTipo = Array.from(mTipo.values()).sort((a, b) => b.Custo - a.Custo)
     const paretoTipo = pareto(porTipo.map(t => ({ nome: t.nome, valor: Math.round(t.Custo * 100) / 100 })))
 
-    // ── Por tipo — contagem para qualidade ────────────────────────────────
-    const paretoOcorrencias = pareto(porTipo.map(t => ({ nome: t.nome, valor: t.Apontamentos })))
+    // ── Perdas e Retrabalhos por modo de falha (tipo) ──────────────────────
+    // "Retrabalho" só existe de fato para os tipos com 1º campo = retrabalho.
+    const TIPOS_RETRABALHO = ['Máquina', 'Clivagem Proximal', 'Clivagem Distal', 'Clivagem com Defeito']
+    const mPerdaTipo = new Map<string, number>()
+    const mRetrabalhoTipo = new Map<string, number>()
+    ricos.forEach(a => {
+      let perda = 0
+      if (a.tipo_desperdicio === 'Manual' || a.tipo_desperdicio === 'Quantidade desperdiçada de Epóxi') {
+        perda = 0   // Manual não conta como perda/retrabalho; Epóxi é em ml (unidade diferente)
+      } else if (a.tipo_desperdicio === 'Crimpagem') {
+        perda = a.quantidade_pecas ?? 0   // 1º campo = peças perdidas
+      } else if (TIPOS_DUPLO_RETRABALHO_PERDA.includes(a.tipo_desperdicio)) {
+        perda = a.quantidade_ml ?? 0      // 2º campo = perda
+      } else {
+        perda = a.quantidade_pecas ?? 0   // tipos de valor único = perda direta
+      }
+      if (perda > 0) mPerdaTipo.set(a.tipo_desperdicio, (mPerdaTipo.get(a.tipo_desperdicio) ?? 0) + perda)
+
+      if (TIPOS_RETRABALHO.includes(a.tipo_desperdicio)) {
+        const retr = a.quantidade_pecas ?? 0   // 1º campo = retrabalho
+        if (retr > 0) mRetrabalhoTipo.set(a.tipo_desperdicio, (mRetrabalhoTipo.get(a.tipo_desperdicio) ?? 0) + retr)
+      }
+    })
+    const mapaPerdaTipo = Array.from(mPerdaTipo.entries()).map(([nome, valor]) => ({ nome, valor }))
+    const mapaRetrabalhoTipo = Array.from(mRetrabalhoTipo.entries()).map(([nome, valor]) => ({ nome, valor }))
+    const modosFalhaDisponiveis = Array.from(new Set([...mapaPerdaTipo.map(p => p.nome), ...mapaRetrabalhoTipo.map(p => p.nome)])).sort()
 
     // ── Por operadora ──────────────────────────────────────────────────────
     const nomeDisplay = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase())
@@ -444,7 +477,8 @@ export default function DashboardPage() {
     return {
       ricos, custoTotal, totalPecas, totalTempo,
       operadoras, ops, pecasPerdidas, pecasRetrabalho,
-      evDia, evCustoAcum, porGrupo, porTipo, paretoTipo, paretoOcorrencias,
+      evDia, evCustoAcum, porGrupo, porTipo, paretoTipo,
+      mapaPerdaTipo, mapaRetrabalhoTipo, modosFalhaDisponiveis,
       porOperadora, porOperadoraCusto, fibraGrupo, porMaterial,
       topOPs, ultimosReg, custoDiaMedio, projecaoMensal, taxaImpacto,
       porTurno, sparkApontamentos, sparkPecas, sparkCusto,
@@ -452,6 +486,16 @@ export default function DashboardPage() {
       projecaoAnual,
     }
   }, [dados])
+
+  // Pareto de Perdas/Retrabalhos filtrado pelo modo de falha selecionado (chips)
+  const paretoPerdas = useMemo(
+    () => pareto(dp.mapaPerdaTipo.filter(p => !modosFalhaExcluidos.has(p.nome))),
+    [dp.mapaPerdaTipo, modosFalhaExcluidos]
+  )
+  const paretoRetrabalhos = useMemo(
+    () => pareto(dp.mapaRetrabalhoTipo.filter(p => !modosFalhaExcluidos.has(p.nome))),
+    [dp.mapaRetrabalhoTipo, modosFalhaExcluidos]
+  )
 
   // ── Guard de autenticação ──────────────────────────────────────────────────
   if (!autenticado) return <LoginDashboard onSuccess={() => setAutenticado(true)} />
@@ -977,15 +1021,47 @@ export default function DashboardPage() {
               </Painel>
             </div>
 
-            {/* ── Pareto + Fibra (mantidos) ─────────────────────────────────── */}
+            {/* ── Filtro por Modo de Falha (afeta os 2 gráficos abaixo) ─────── */}
+            {dp.modosFalhaDisponiveis.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider mr-1" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  Modo de Falha:
+                </span>
+                {dp.modosFalhaDisponiveis.map(nome => {
+                  const ativo = !modosFalhaExcluidos.has(nome)
+                  return (
+                    <button
+                      key={nome}
+                      type="button"
+                      onClick={() => toggleModoFalha(nome)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-[0.96]"
+                      style={{
+                        background: ativo ? '#1F3744' : '#fff',
+                        color: ativo ? '#fff' : '#607A89',
+                        border: `1px solid ${ativo ? '#1F3744' : '#DDE6EB'}`,
+                      }}
+                    >
+                      {nome}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* ── Pareto de Perdas e Retrabalhos por Modo de Falha ──────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Painel titulo="Pareto — Frequência por Tipo (ocorrências)">
-                <GraficoPareto dados={dp.paretoOcorrencias} corBarra="#56A4BB" labelValor="Ocorrências" />
+              <Painel titulo="Pareto — Perdas por Modo de Falha (peças)">
+                <GraficoPareto dados={paretoPerdas} corBarra="#ef4444" labelValor="Perdas (pç)" />
               </Painel>
-              <Painel titulo="Pareto — Impacto Financeiro por Tipo (R$)">
-                <GraficoPareto dados={dp.paretoTipo} corBarra="#ef4444" labelValor="Custo R$" />
+              <Painel titulo="Pareto — Retrabalhos por Modo de Falha (peças)">
+                <GraficoPareto dados={paretoRetrabalhos} corBarra="#D4A155" labelValor="Retrabalhos (pç)" />
               </Painel>
             </div>
+
+            {/* ── Pareto — Impacto Financeiro (mantido) ─────────────────────── */}
+            <Painel titulo="Pareto — Impacto Financeiro por Tipo (R$)">
+              <GraficoPareto dados={dp.paretoTipo} corBarra="#ef4444" labelValor="Custo R$" />
+            </Painel>
 
             <Painel titulo="Custo por Tipo de Fibra e Grupo — Fibra 272 vs Fibra 365">
               {dp.fibraGrupo.length === 0
