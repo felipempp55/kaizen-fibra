@@ -497,6 +497,48 @@ export default function DashboardPage() {
     [dp.mapaRetrabalhoTipo, modosFalhaExcluidos]
   )
 
+  // ── Tendência semanal de retrabalho (últimas 6 semanas, independente do filtro de período) ──
+  const [tendRetrabalhoDados, setTendRetrabalhoDados] = useState<Apontamento[]>([])
+  const [modoFalhaTendencia, setModoFalhaTendencia] = useState<string>(TIPOS_DUPLO_RETRABALHO_PERDA[0])
+
+  useEffect(() => {
+    if (!autenticado) return
+    const inicioJanela = new Date()
+    inicioJanela.setDate(inicioJanela.getDate() - 42) // 6 semanas
+    inicioJanela.setHours(0, 0, 0, 0)
+    supabase.from('apontamentos').select('*')
+      .in('tipo_desperdicio', TIPOS_DUPLO_RETRABALHO_PERDA)
+      .gte('created_at', inicioJanela.toISOString())
+      .order('created_at', { ascending: true })
+      .then(({ data }) => setTendRetrabalhoDados(data ?? []))
+  }, [autenticado])
+
+  const tendenciaRetrabalhoSemanal = useMemo(() => {
+    function inicioSemana(d: Date): Date {
+      const dt = new Date(d)
+      const dow = dt.getDay()
+      dt.setDate(dt.getDate() + (dow === 0 ? -6 : 1 - dow))
+      dt.setHours(0, 0, 0, 0)
+      return dt
+    }
+    const semanaAtual = inicioSemana(new Date())
+    const semanas: Date[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(semanaAtual)
+      d.setDate(d.getDate() - i * 7)
+      semanas.push(d)
+    }
+    return semanas.map((inicio, i) => {
+      const fim = i < semanas.length - 1 ? semanas[i + 1] : new Date(inicio.getTime() + 7 * 86400000)
+      const valor = tendRetrabalhoDados
+        .filter(a => a.tipo_desperdicio === modoFalhaTendencia)
+        .filter(a => { const dt = new Date(a.created_at); return dt >= inicio && dt < fim })
+        .reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
+      const label = `${String(inicio.getDate()).padStart(2, '0')}/${String(inicio.getMonth() + 1).padStart(2, '0')}`
+      return { semana: label, Retrabalhos: valor }
+    })
+  }, [tendRetrabalhoDados, modoFalhaTendencia])
+
   // ── Guard de autenticação ──────────────────────────────────────────────────
   if (!autenticado) return <LoginDashboard onSuccess={() => setAutenticado(true)} />
 
@@ -1057,6 +1099,65 @@ export default function DashboardPage() {
                 <GraficoPareto dados={paretoRetrabalhos} corBarra="#D4A155" labelValor="Retrabalhos (pç)" />
               </Painel>
             </div>
+
+            {/* ── Tendência Semanal de Retrabalho (últimas 6 semanas) ────────── */}
+            <Painel titulo="">
+              <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+                    ÚLTIMAS 6 SEMANAS
+                  </p>
+                  <h3 className="text-lg font-extrabold leading-tight" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
+                    Tendência Semanal de Retrabalho
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {TIPOS_DUPLO_RETRABALHO_PERDA.map(nome => {
+                    const ativo = modoFalhaTendencia === nome
+                    return (
+                      <button
+                        key={nome}
+                        type="button"
+                        onClick={() => setModoFalhaTendencia(nome)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all active:scale-[0.96]"
+                        style={{
+                          background: ativo ? '#D4A155' : '#fff',
+                          color: ativo ? '#fff' : '#607A89',
+                          border: `1px solid ${ativo ? '#D4A155' : '#DDE6EB'}`,
+                        }}
+                      >
+                        {nome}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              {tendenciaRetrabalhoSemanal.every(p => p.Retrabalhos === 0) ? <Vazio /> : (
+                <ResponsiveContainer width="100%" height={230}>
+                  <AreaChart data={tendenciaRetrabalhoSemanal} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="gradTendRetrabalho" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor="#D4A155" stopOpacity={0.28} />
+                        <stop offset="95%" stopColor="#D4A155" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" vertical={false} />
+                    <XAxis dataKey="semana" tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip {...TT} />
+                    <Area
+                      type="monotone"
+                      dataKey="Retrabalhos"
+                      stroke="#D4A155"
+                      strokeWidth={2.5}
+                      fill="url(#gradTendRetrabalho)"
+                      dot={{ r: 4, fill: '#D4A155', stroke: '#fff', strokeWidth: 2 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </Painel>
 
             {/* ── Pareto — Impacto Financeiro (mantido) ─────────────────────── */}
             <Painel titulo="Pareto — Impacto Financeiro por Tipo (R$)">
