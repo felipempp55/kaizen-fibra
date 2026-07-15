@@ -12,29 +12,33 @@ export function formatarQtdApontamento(a: Apontamento): React.ReactElement {
     'Clivagem Distal':      { p: 'retr', s: 'perd',  corS: 'var(--signal-red)'   },
   }
   const dual = labelsDuplos[a.tipo_desperdicio]
-  if (dual && a.quantidade_pecas != null) {
+  // Tipos duplos: quantidade_ml aqui guarda a 2ª quantidade (peças), nunca ml de verdade.
+  // Aplica sempre que o tipo é duplo, mesmo quando só a perda foi apontada (sem retrabalho).
+  if (dual && (a.quantidade_pecas != null || a.quantidade_ml != null)) {
+    const temPrimaria = a.quantidade_pecas != null
+    const temSecundaria = a.quantidade_ml != null && a.quantidade_ml > 0
     return (
       <span
         className="inline-flex items-center gap-1.5 font-bold tabular-nums"
         style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-strong)' }}
       >
-        <span>
-          {a.quantidade_pecas}{' '}
-          <span
-            className="text-[10px] font-semibold uppercase"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            {dual.p}
-          </span>
-        </span>
-        {a.quantidade_ml != null && a.quantidade_ml > 0 && (
-          <>
-            <span style={{ color: 'var(--text-faint)' }}>·</span>
-            <span style={{ color: dual.corS }}>
-              {a.quantidade_ml}{' '}
-              <span className="text-[10px] font-semibold uppercase">{dual.s}</span>
+        {temPrimaria && (
+          <span>
+            {a.quantidade_pecas}{' '}
+            <span
+              className="text-[10px] font-semibold uppercase"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {dual.p}
             </span>
-          </>
+          </span>
+        )}
+        {temPrimaria && temSecundaria && <span style={{ color: 'var(--text-faint)' }}>·</span>}
+        {temSecundaria && (
+          <span style={{ color: dual.corS }}>
+            {a.quantidade_ml}{' '}
+            <span className="text-[10px] font-semibold uppercase">{dual.s}</span>
+          </span>
         )}
       </span>
     )
