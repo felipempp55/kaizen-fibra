@@ -497,47 +497,98 @@ export default function DashboardPage() {
     [dp.mapaRetrabalhoTipo, modosFalhaExcluidos]
   )
 
-  // ── Tendência semanal de retrabalho (últimas 6 semanas, independente do filtro de período) ──
+  // ── Tendência de Taxa de Retrabalho — granularidade e janela seguem o filtro de período ──
   const [tendRetrabalhoDados, setTendRetrabalhoDados] = useState<Apontamento[]>([])
   const [modoFalhaTendencia, setModoFalhaTendencia] = useState<string>(TIPOS_DUPLO_RETRABALHO_PERDA[0])
 
   useEffect(() => {
     if (!autenticado) return
-    const inicioJanela = new Date()
-    inicioJanela.setDate(inicioJanela.getDate() - 42) // 6 semanas
-    inicioJanela.setHours(0, 0, 0, 0)
+    let de: Date
+    if (periodo === 'hoje') {
+      de = new Date(); de.setDate(de.getDate() - 7); de.setHours(0, 0, 0, 0)
+    } else if (periodo === 'semana') {
+      de = new Date(); de.setDate(de.getDate() - 7 * 7); de.setHours(0, 0, 0, 0)
+    } else if (periodo === 'mes' || periodo === 'ano') {
+      const hoje = new Date(); de = new Date(hoje.getFullYear(), hoje.getMonth() - 7, 1)
+    } else {
+      const { de: deStr } = getIntervalo(periodo, ini, fim)
+      de = new Date(deStr)
+    }
     supabase.from('apontamentos').select('*')
-      .in('tipo_desperdicio', TIPOS_DUPLO_RETRABALHO_PERDA)
-      .gte('created_at', inicioJanela.toISOString())
+      .gte('created_at', de.toISOString())
       .order('created_at', { ascending: true })
       .then(({ data }) => setTendRetrabalhoDados(data ?? []))
-  }, [autenticado])
+  }, [autenticado, periodo, ini, fim])
 
-  const tendenciaRetrabalhoSemanal = useMemo(() => {
-    function inicioSemana(d: Date): Date {
-      const dt = new Date(d)
-      const dow = dt.getDay()
-      dt.setDate(dt.getDate() + (dow === 0 ? -6 : 1 - dow))
-      dt.setHours(0, 0, 0, 0)
-      return dt
+  const tendenciaRetrabalho = useMemo(() => {
+    const fmtDiaMes = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+    const fmtMesAno = (d: Date) => d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '')
+
+    type Bucket = { inicio: Date; fim: Date; label: string }
+    const buckets: Bucket[] = []
+
+    if (periodo === 'hoje') {
+      // Últimos 8 dias, granularidade diária
+      for (let i = 7; i >= 0; i--) {
+        const inicio = new Date(); inicio.setDate(inicio.getDate() - i); inicio.setHours(0, 0, 0, 0)
+        const fim = new Date(inicio); fim.setDate(fim.getDate() + 1)
+        buckets.push({ inicio, fim, label: fmtDiaMes(inicio) })
+      }
+    } else if (periodo === 'semana') {
+      // Últimas 8 semanas, granularidade semanal (seg–dom)
+      function inicioSemana(d: Date): Date {
+        const dt = new Date(d); const dow = dt.getDay()
+        dt.setDate(dt.getDate() + (dow === 0 ? -6 : 1 - dow)); dt.setHours(0, 0, 0, 0)
+        return dt
+      }
+      const semanaAtual = inicioSemana(new Date())
+      for (let i = 7; i >= 0; i--) {
+        const inicio = new Date(semanaAtual); inicio.setDate(inicio.getDate() - i * 7)
+        const fim = new Date(inicio); fim.setDate(fim.getDate() + 7)
+        buckets.push({ inicio, fim, label: fmtDiaMes(inicio) })
+      }
+    } else if (periodo === 'mes' || periodo === 'ano') {
+      // Últimos 8 meses, granularidade mensal
+      const hoje = new Date()
+      for (let i = 7; i >= 0; i--) {
+        const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
+        const fim = new Date(hoje.getFullYear(), hoje.getMonth() - i + 1, 1)
+        buckets.push({ inicio, fim, label: fmtMesAno(inicio) })
+      }
+    } else {
+      // Personalizado: granularidade diária, cobrindo exatamente o intervalo escolhido
+      const { de, ate } = getIntervalo(periodo, ini, fim)
+      const cursor = new Date(de); cursor.setHours(0, 0, 0, 0)
+      const limite = new Date(ate); limite.setHours(0, 0, 0, 0)
+      while (cursor <= limite) {
+        const inicio = new Date(cursor)
+        const fimB = new Date(inicio); fimB.setDate(fimB.getDate() + 1)
+        buckets.push({ inicio, fim: fimB, label: fmtDiaMes(inicio) })
+        cursor.setDate(cursor.getDate() + 1)
+      }
     }
-    const semanaAtual = inicioSemana(new Date())
-    const semanas: Date[] = []
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(semanaAtual)
-      d.setDate(d.getDate() - i * 7)
-      semanas.push(d)
-    }
-    return semanas.map((inicio, i) => {
-      const fim = i < semanas.length - 1 ? semanas[i + 1] : new Date(inicio.getTime() + 7 * 86400000)
-      const valor = tendRetrabalhoDados
+
+    return buckets.map(({ inicio, fim, label }) => {
+      const doBucket = tendRetrabalhoDados.filter(a => {
+        const dt = new Date(a.created_at)
+        return dt >= inicio && dt < fim
+      })
+      // Base de peças: tamanho de cada OP distinta com atividade no bucket (não soma por apontamento)
+      const opTamanhoMapBucket = new Map<string, number>()
+      doBucket.forEach(a => { if (a.tamanho_op && !opTamanhoMapBucket.has(a.numero_op)) opTamanhoMapBucket.set(a.numero_op, a.tamanho_op) })
+      const baseBucket = Array.from(opTamanhoMapBucket.values()).reduce((s, v) => s + v, 0)
+      const retrabalhosBucket = doBucket
         .filter(a => a.tipo_desperdicio === modoFalhaTendencia)
-        .filter(a => { const dt = new Date(a.created_at); return dt >= inicio && dt < fim })
         .reduce((s, a) => s + (a.quantidade_pecas ?? 0), 0)
-      const label = `${String(inicio.getDate()).padStart(2, '0')}/${String(inicio.getMonth() + 1).padStart(2, '0')}`
-      return { semana: label, Retrabalhos: valor }
+      const taxa = baseBucket > 0 ? Math.round((retrabalhosBucket / baseBucket) * 1000) / 10 : 0
+      return { periodo: label, TaxaRetrabalho: taxa, retrabalhos: retrabalhosBucket, base: baseBucket }
     })
-  }, [tendRetrabalhoDados, modoFalhaTendencia])
+  }, [tendRetrabalhoDados, modoFalhaTendencia, periodo, ini, fim])
+
+  const labelJanelaTendencia = periodo === 'hoje' ? 'ÚLTIMOS 8 DIAS'
+    : periodo === 'semana' ? 'ÚLTIMAS 8 SEMANAS'
+    : (periodo === 'mes' || periodo === 'ano') ? 'ÚLTIMOS 8 MESES'
+    : 'PERÍODO SELECIONADO'
 
   // ── Guard de autenticação ──────────────────────────────────────────────────
   if (!autenticado) return <LoginDashboard onSuccess={() => setAutenticado(true)} />
@@ -1100,15 +1151,15 @@ export default function DashboardPage() {
               </Painel>
             </div>
 
-            {/* ── Tendência Semanal de Retrabalho (últimas 6 semanas) ────────── */}
+            {/* ── Tendência de Taxa de Retrabalho (segue o filtro de período) ─── */}
             <Painel titulo="">
               <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
-                    ÚLTIMAS 6 SEMANAS
+                    {labelJanelaTendencia}
                   </p>
                   <h3 className="text-lg font-extrabold leading-tight" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
-                    Tendência Semanal de Retrabalho
+                    Tendência de Taxa de Retrabalho (%)
                   </h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1132,9 +1183,9 @@ export default function DashboardPage() {
                   })}
                 </div>
               </div>
-              {tendenciaRetrabalhoSemanal.every(p => p.Retrabalhos === 0) ? <Vazio /> : (
+              {tendenciaRetrabalho.every(p => p.TaxaRetrabalho === 0) ? <Vazio /> : (
                 <ResponsiveContainer width="100%" height={230}>
-                  <AreaChart data={tendenciaRetrabalhoSemanal} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
+                  <AreaChart data={tendenciaRetrabalho} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
                     <defs>
                       <linearGradient id="gradTendRetrabalho" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%"  stopColor="#D4A155" stopOpacity={0.28} />
@@ -1142,12 +1193,14 @@ export default function DashboardPage() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" vertical={false} />
-                    <XAxis dataKey="semana" tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip {...TT} />
+                    <XAxis dataKey="periodo" tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#607A89', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                    <Tooltip {...TT} formatter={(v: unknown, n: unknown, p: { payload?: { retrabalhos: number; base: number } }) => [
+                      `${v}% (${p?.payload?.retrabalhos ?? 0} retr. / ${p?.payload?.base ?? 0} pç)`, 'Taxa de Retrabalho'
+                    ]} />
                     <Area
                       type="monotone"
-                      dataKey="Retrabalhos"
+                      dataKey="TaxaRetrabalho"
                       stroke="#D4A155"
                       strokeWidth={2.5}
                       fill="url(#gradTendRetrabalho)"
