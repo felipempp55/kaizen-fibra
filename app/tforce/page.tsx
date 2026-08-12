@@ -98,6 +98,7 @@ export default function TForcePage() {
 
   async function confirmarNovaOp() {
     if (!podeSalvarOp()) return
+    setErro(null)
     const nova: OP = { numero: montarNumeroOP(), tamanho: parseInt(novoTamanhoOp) || undefined }
     const r = await abrirOP({ numero: nova.numero, fibra: null, tamanho: nova.tamanho, linha: LINHA })
       .catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : 'Erro de rede' }))
@@ -368,6 +369,12 @@ export default function TForcePage() {
             </span>
           </div>
           <div className="flex-1 overflow-y-auto p-6 max-w-lg mx-auto w-full flex flex-col gap-6">
+            {/* Erro precisa aparecer AQUI dentro — o banner da página fica atrás deste overlay */}
+            {erro && (
+              <div className="rounded-xl p-4 text-sm" style={{ background: 'var(--signal-red-soft)', border: '1px solid #f5d2d1', color: 'var(--signal-red)' }}>
+                ⚠ {erro}
+              </div>
+            )}
             <div className="flex flex-col gap-3">
               <p className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
                 Número da Ordem de Produção

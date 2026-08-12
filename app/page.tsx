@@ -757,6 +757,12 @@ export default function Home() {
             </span>
           </div>
           <div className="flex-1 overflow-y-auto p-6 max-w-lg mx-auto w-full flex flex-col gap-6">
+            {/* Erro precisa aparecer AQUI dentro — o banner da página fica atrás deste overlay */}
+            {erro && (
+              <div className="rounded-xl p-4 text-sm" style={{ background: 'var(--signal-red-soft)', border: '1px solid #f5d2d1', color: 'var(--signal-red)' }}>
+                ⚠ {erro}
+              </div>
+            )}
             {/* ── Número da OP: preview + seletor de ano + teclado ──────────── */}
             <div className="flex flex-col gap-3">
               <p className="text-sm font-semibold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)' }}>
