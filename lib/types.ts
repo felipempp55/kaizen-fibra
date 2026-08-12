@@ -4,6 +4,9 @@ export type OpcaoClassificacao = 'perda_retrabalho' | 'nenhum'
 export type OpcaoTempo = 'sempre' | 'nunca' | 'se_retrabalho'
 export type TipoFibra = 'F272' | 'F365'
 
+/** Linha produtiva. Registros anteriores à expansão são 'fibra' por padrão no banco. */
+export type Linha = 'fibra' | 'tforce'
+
 export type OpcaoInput = 'teclado' | 'contador' | 'contador_duplo' | 'outros'
 
 export interface TipoDesperdicio {
@@ -46,6 +49,10 @@ export interface Apontamento {
   tamanho_op: number | null
   /** Códigos de materiais perdidos (grupo "Outros"), separados por vírgula */
   materiais_perdidos: string | null
+  /** Linha produtiva do apontamento */
+  linha: Linha
+  /** 3º nível da taxonomia T-Force (nulo na fibra) */
+  modo_falha: string | null
 }
 
 export interface NovoApontamento {
@@ -61,6 +68,8 @@ export interface NovoApontamento {
   observacao: string | null
   tamanho_op: number | null
   materiais_perdidos: string | null
+  linha: Linha
+  modo_falha: string | null
 }
 
 // ─── CEP ───────────────────────────────────────────────────────────────────

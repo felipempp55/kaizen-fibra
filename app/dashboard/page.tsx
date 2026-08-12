@@ -239,6 +239,7 @@ export default function DashboardPage() {
     const desde = new Date(); desde.setDate(desde.getDate() - 90)
     const { data } = await supabase
       .from('apontamentos').select('numero_op, created_at')
+      .eq('linha', 'fibra')
       .gte('created_at', desde.toISOString())
       .order('created_at', { ascending: false })
     if (!data) return
@@ -251,7 +252,8 @@ export default function DashboardPage() {
 
   const buscar = useCallback(async () => {
     setCarregando(true)
-    let query = supabase.from('apontamentos').select('*').order('created_at', { ascending: true })
+    // Fase 1: dashboard fixo na linha fibra. O seletor de linha entra na Fase 2.
+    let query = supabase.from('apontamentos').select('*').eq('linha', 'fibra').order('created_at', { ascending: true })
     if (filtroOp !== null && opsRecentes.length > 0) {
       const opNumero = filtroOp === 'atual' ? opsRecentes[0] : opsRecentes[1]
       if (opNumero) {
@@ -515,6 +517,7 @@ export default function DashboardPage() {
       de = new Date(deStr)
     }
     supabase.from('apontamentos').select('*')
+      .eq('linha', 'fibra')
       .gte('created_at', de.toISOString())
       .order('created_at', { ascending: true })
       .then(({ data }) => setTendRetrabalhoDados(data ?? []))

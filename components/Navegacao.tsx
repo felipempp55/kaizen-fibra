@@ -7,11 +7,14 @@ import { useState, useEffect } from 'react'
 
 interface Props {
   onReset?: () => void
+  /** Linha produtiva desta tela. Padrão 'fibra' — telas existentes não mudam. */
+  linha?: 'fibra' | 'tforce'
 }
 
-export default function Navegacao({ onReset }: Props) {
+export default function Navegacao({ onReset, linha = 'fibra' }: Props) {
   const pathname = usePathname()
   const [agora, setAgora] = useState(new Date())
+  const rotaApontamentos = linha === 'tforce' ? '/tforce' : '/'
 
   useEffect(() => {
     const timer = setInterval(() => setAgora(new Date()), 30000)
@@ -39,36 +42,50 @@ export default function Navegacao({ onReset }: Props) {
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             title="Voltar ao início"
           >
-            <LogoArea />
+            <LogoArea linha={linha} />
           </button>
         ) : (
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <LogoArea />
+          <Link href={rotaApontamentos} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <LogoArea linha={linha} />
           </Link>
         )}
       </div>
 
       {/* ─── Centro: navegação ─────────────────────────────────── */}
       <nav className="flex-1 flex items-center justify-center gap-1">
-        {pathname === '/' && onReset ? (
+        {pathname === rotaApontamentos && onReset ? (
           <button onClick={onReset} className={itemStyle(true)}>
             Apontamentos
           </button>
         ) : (
-          <Link href="/" className={itemStyle(pathname === '/')}>
+          <Link href={rotaApontamentos} className={itemStyle(pathname === rotaApontamentos)}>
             Apontamentos
           </Link>
         )}
         <Link href="/dashboard" className={itemStyle(pathname === '/dashboard')}>
           Dashboard
         </Link>
-        <Link href="/cep" className={itemStyle(pathname === '/cep')}>
-          CEP
-        </Link>
+        {linha === 'fibra' && (
+          <Link href="/cep" className={itemStyle(pathname === '/cep')}>
+            CEP
+          </Link>
+        )}
       </nav>
 
-      {/* ─── Direita: status + hora ─────────────────────────────── */}
+      {/* ─── Direita: trocar linha + status + hora ──────────────── */}
       <div className="flex items-center gap-4">
+        {/* Trocar linha produtiva */}
+        <Link
+          href="/linha"
+          className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1.5 rounded-lg border transition-all active:scale-95 hidden sm:block"
+          style={{ color: 'rgba(255,255,255,0.4)', borderColor: 'rgba(255,255,255,0.12)', fontFamily: 'var(--font-mono)' }}
+          title="Trocar linha produtiva"
+        >
+          ⇄ Linha
+        </Link>
+
+        <div className="h-4 w-px bg-white/10 hidden sm:block" />
+
         {/* Live dot + turno */}
         <div className="flex items-center gap-2">
           <span className="relative inline-flex h-2 w-2">
@@ -100,7 +117,7 @@ export default function Navegacao({ onReset }: Props) {
   )
 }
 
-function LogoArea() {
+function LogoArea({ linha = 'fibra' }: { linha?: 'fibra' | 'tforce' }) {
   return (
     <div className="flex items-center gap-3">
       {/* Logo MSB — versão branca para fundo escuro */}
@@ -126,7 +143,7 @@ function LogoArea() {
           color: 'rgba(255,255,255,0.45)',
         }}
       >
-        ESTAÇÃO · FIBRA
+        {linha === 'tforce' ? 'ESTAÇÃO · T-FORCE' : 'ESTAÇÃO · FIBRA'}
       </span>
     </div>
   )

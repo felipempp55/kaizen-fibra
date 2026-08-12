@@ -200,7 +200,9 @@ export default function Home() {
   // Carrega OPs abertas do Supabase e escuta mudanças em tempo real
   useEffect(() => {
     async function carregar() {
-      const { data } = await supabase.from('ops_abertas').select('*').order('criada_em', { ascending: true })
+      const { data } = await supabase.from('ops_abertas').select('*')
+        .eq('linha', 'fibra')
+        .order('criada_em', { ascending: true })
       const lista: OP[] = (data ?? []).map(d => ({ numero: d.numero, fibra: d.fibra as TipoFibra, tamanho: d.tamanho ?? undefined }))
       setOps(lista)
       setCarregando(false)
@@ -209,10 +211,13 @@ export default function Home() {
 
     const channel = supabase.channel('ops_abertas_sync')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ops_abertas' }, payload => {
+        // Ignora OPs de outra linha produtiva
+        if ((payload.new.linha ?? 'fibra') !== 'fibra') return
         const nova: OP = { numero: payload.new.numero, fibra: payload.new.fibra as TipoFibra, tamanho: payload.new.tamanho ?? undefined }
         setOps(prev => prev.some(o => o.numero === nova.numero) ? prev : [...prev, nova])
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'ops_abertas' }, payload => {
+        // Seguro sem checar linha: a lista local só tem OPs da fibra, remover número de outra linha é no-op
         const removida = payload.old.numero as string
         setOps(prev => prev.filter(o => o.numero !== removida))
       })
@@ -233,11 +238,13 @@ export default function Home() {
     setCarregandoDados(true)
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
     supabase.from('apontamentos').select('*')
+      .eq('linha', 'fibra')
       .gte('created_at', hoje.toISOString())
       .eq('numero_op', opAtiva.numero)
       .then(({ data }) => { setDadosHoje(data ?? []); setCarregandoDados(false) })
     // Histórico completo da OP (todas as datas) para a linha do tempo
     supabase.from('apontamentos').select('*')
+      .eq('linha', 'fibra')
       .eq('numero_op', opAtiva.numero)
       .then(({ data }) => { setDadosOP(data ?? []) })
   }, [opAtiva])
@@ -342,7 +349,9 @@ export default function Home() {
       setGerandoExport(true)
       setExportMensagem('Buscando dados…')
       try {
-        const { data } = await supabase.from('apontamentos').select('*').order('created_at', { ascending: true })
+        const { data } = await supabase.from('apontamentos').select('*')
+          .eq('linha', 'fibra')
+          .order('created_at', { ascending: true })
         exportarXlsx(data ?? [])
         fecharModalExport()
       } catch { setExportMensagem('Erro ao exportar. Tente novamente.') }
@@ -360,7 +369,7 @@ export default function Home() {
     setExportMensagem('Buscando dados da OP…')
     try {
       const [{ data: aps }, { data: tempos }] = await Promise.all([
-        supabase.from('apontamentos').select('*').eq('numero_op', numero).order('created_at', { ascending: true }),
+        supabase.from('apontamentos').select('*').eq('linha', 'fibra').eq('numero_op', numero).order('created_at', { ascending: true }),
         supabase.from('tempos_retrabalho_polimento').select('tempo_ms, custo_hh').eq('numero_op', numero),
       ])
       if (!aps || aps.length === 0) { setExportMensagem(`Nenhum apontamento encontrado para a OP ${numero}.`); return }
@@ -396,9 +405,11 @@ export default function Home() {
       if (opAtiva) {
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
         const { data } = await supabase.from('apontamentos').select('*')
+          .eq('linha', 'fibra')
           .gte('created_at', hoje.toISOString()).eq('numero_op', opAtiva.numero)
         setDadosHoje(data ?? [])
         const { data: dataOP } = await supabase.from('apontamentos').select('*')
+          .eq('linha', 'fibra')
           .eq('numero_op', opAtiva.numero)
         setDadosOP(dataOP ?? [])
       }

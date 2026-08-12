@@ -1,7 +1,7 @@
 'use server'
 
 import { supabase } from '@/lib/supabase'
-import type { NovoApontamento, NovaCEPColeta, RascunhoCEP, TipoFibra } from '@/lib/types'
+import type { NovoApontamento, NovaCEPColeta, RascunhoCEP, TipoFibra, Linha } from '@/lib/types'
 
 // ── Resultado padrão das Server Actions ─────────────────────────────────────
 // Padrão Next 16: nunca usar throw em Server Actions. Sempre retornar valor.
@@ -40,12 +40,13 @@ export async function salvarApontamento(dados: NovoApontamento): Promise<Resulta
 
 // ── Ordens de Produção ──────────────────────────────────────────────────────
 
-export async function abrirOP(dados: { numero: string; fibra: TipoFibra; tamanho?: number }): Promise<ResultadoAction> {
+export async function abrirOP(dados: { numero: string; fibra: TipoFibra | null; tamanho?: number; linha?: Linha }): Promise<ResultadoAction> {
   try {
     const { error } = await supabase.from('ops_abertas').upsert({
       numero: dados.numero,
       fibra: dados.fibra,
       tamanho: dados.tamanho ?? null,
+      linha: dados.linha ?? 'fibra',
     })
     if (error) return falha(error, 'abrirOP')
     return { ok: true }

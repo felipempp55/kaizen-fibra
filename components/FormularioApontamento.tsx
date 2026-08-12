@@ -147,6 +147,8 @@ export default function FormularioApontamento({ op, fibra, operador, tamanho, on
         // Sempre salva a coluna (mesmo vazia) → marca o apontamento como "modelo manual".
         // Apontamentos antigos têm essa coluna nula e mantêm o cálculo legado.
         materiais_perdidos: materiaisSelecionados.join(','),
+        linha: 'fibra',
+        modo_falha: null,
       })
       // Só vai para a tela de sucesso se realmente salvou
       if (ok !== false) setSucesso(true)
