@@ -15,6 +15,7 @@ export default function Navegacao({ onReset, linha = 'fibra' }: Props) {
   const pathname = usePathname()
   const [agora, setAgora] = useState(new Date())
   const rotaApontamentos = linha === 'tforce' ? '/tforce' : '/'
+  const rotaDashboard = linha === 'tforce' ? '/tforce/dashboard' : '/dashboard'
 
   useEffect(() => {
     const timer = setInterval(() => setAgora(new Date()), 30000)
@@ -62,7 +63,7 @@ export default function Navegacao({ onReset, linha = 'fibra' }: Props) {
             Apontamentos
           </Link>
         )}
-        <Link href="/dashboard" className={itemStyle(pathname === '/dashboard')}>
+        <Link href={rotaDashboard} className={itemStyle(pathname === rotaDashboard)}>
           Dashboard
         </Link>
         {linha === 'fibra' && (
