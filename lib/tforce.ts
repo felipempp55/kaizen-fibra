@@ -148,5 +148,8 @@ export function buscarPI(codigo: string): PITForce | undefined {
   return PIS_TFORCE.find(p => p.codigo === codigo)
 }
 
-/** Placeholder enquanto a lista de operadoras da T-Force não é definida */
-export const OPERADOR_NAO_INFORMADO = 'Não informado'
+export const OPERADORAS_TFORCE = [
+  'Bruna Silva', 'Bruna Nascimento', 'Edilcélia Jesus', 'Alice Cruz', 'Poliana Vieira',
+  'Ana Beatriz', 'Yasmin Batista', 'Leildes Bonfim', 'Silvana Santos', 'Joice Santos',
+  'Janete Jesus', 'Lucia Maria', 'Michele Santana', 'Taisa Cruz', 'Elaine Jabaly',
+]

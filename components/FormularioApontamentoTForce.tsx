@@ -2,19 +2,24 @@
 
 import { useState } from 'react'
 
-import { PIS_TFORCE, rotuloPI, OPERADOR_NAO_INFORMADO, type PITForce, type OperacaoTForce } from '@/lib/tforce'
+import { PIS_TFORCE, OPERADORAS_TFORCE, rotuloPI, type PITForce, type OperacaoTForce } from '@/lib/tforce'
 import type { NovoApontamento } from '@/lib/types'
 import EtapaIndicador from './EtapaIndicador'
 
-type TipoEtapa = 'falha' | 'quantidade' | 'confirmar'
+type TipoEtapa = 'falha' | 'quantidade' | 'operadora' | 'confirmar'
 
 const LABELS_ETAPA: Record<TipoEtapa, string> = {
   falha: 'Onde',
   quantidade: 'Quantidade',
+  operadora: 'Quem',
   confirmar: 'Confirmar',
 }
 
-const SEQUENCIA: TipoEtapa[] = ['falha', 'quantidade', 'confirmar']
+const SEQUENCIA: TipoEtapa[] = ['falha', 'quantidade', 'operadora', 'confirmar']
+
+function iniciais(nome: string): string {
+  return nome.split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('')
+}
 
 interface Selecao {
   pi: PITForce
@@ -35,6 +40,7 @@ export default function FormularioApontamentoTForce({ op, tamanho, onSalvar }: P
   const [retrabalhos, setRetrabalhos] = useState('')
   const [perdas, setPerdas] = useState('')
   const [observacao, setObservacao] = useState('')
+  const [operadoraSelecionada, setOperadoraSelecionada] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [sucesso, setSucesso] = useState(false)
 
@@ -51,6 +57,7 @@ export default function FormularioApontamentoTForce({ op, tamanho, onSalvar }: P
     setRetrabalhos('')
     setPerdas('')
     setObservacao('')
+    setOperadoraSelecionada(null)
     setSucesso(false)
   }
 
@@ -66,12 +73,13 @@ export default function FormularioApontamentoTForce({ op, tamanho, onSalvar }: P
       case 'falha': return !!selecao
       // Basta um dos contadores ter valor (permite só perda, ou só retrabalho)
       case 'quantidade': return parseInt(retrabalhos || '0') > 0 || parseInt(perdas || '0') > 0
+      case 'operadora': return !!operadoraSelecionada
       default: return true
     }
   }
 
   async function confirmar() {
-    if (!selecao) return
+    if (!selecao || !operadoraSelecionada) return
     setSalvando(true)
     try {
       const toIntOuNull = (s: string): number | null => {
@@ -88,7 +96,7 @@ export default function FormularioApontamentoTForce({ op, tamanho, onSalvar }: P
         grupo: selecao.pi.codigo,               // PI (nível 1)
         tipo_desperdicio: selecao.operacao.nome, // Operação (nível 2)
         modo_falha: selecao.modo,                // Modo de falha (nível 3)
-        nome_operador: OPERADOR_NAO_INFORMADO,   // etapa de operadora ainda não habilitada
+        nome_operador: operadoraSelecionada,
         numero_op: op.toUpperCase(),
         fibra: null,                             // campo exclusivo da linha fibra
         quantidade_pecas: qRetrabalhos,          // 1º campo = retrabalhos
@@ -124,7 +132,7 @@ export default function FormularioApontamentoTForce({ op, tamanho, onSalvar }: P
             Apontamento Salvo
           </h2>
           <p className="mt-2 text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            {selecao?.pi.curto} · {selecao?.operacao.nome} · OP {op}
+            {selecao?.pi.curto} · {selecao?.operacao.nome} · {operadoraSelecionada} · OP {op}
           </p>
         </div>
 
@@ -275,7 +283,48 @@ export default function FormularioApontamentoTForce({ op, tamanho, onSalvar }: P
         </div>
       )}
 
-      {/* ── ETAPA 3: confirmar ──────────────────────────────────────────── */}
+      {/* ── ETAPA 3: operadora ───────────────────────────────────────────── */}
+      {etapaAtual === 'operadora' && (
+        <div className="flex flex-col gap-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--brand-primary)', fontFamily: 'var(--font-mono)' }}>
+            ETAPA 3 — Quem está apontando?
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {OPERADORAS_TFORCE.map(nome => {
+              const ativo = operadoraSelecionada === nome
+              return (
+                <button
+                  key={nome}
+                  onClick={() => { setOperadoraSelecionada(nome); avancar() }}
+                  className="rounded-xl px-3 py-3.5 flex items-center gap-3 text-left transition-all active:scale-[0.97]"
+                  style={{
+                    background: ativo ? 'var(--brand-primary)' : '#fff',
+                    color: ativo ? '#fff' : 'var(--text-strong)',
+                    border: `2px solid ${ativo ? 'var(--brand-primary)' : 'var(--line)'}`,
+                    boxShadow: ativo ? '0 4px 16px rgba(86,164,187,0.3)' : 'none',
+                    fontFamily: 'var(--font-display)',
+                  }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
+                    style={{
+                      background: ativo ? 'rgba(255,255,255,0.15)' : 'var(--brand-primary-soft)',
+                      color: ativo ? '#fff' : 'var(--brand-primary-dark)',
+                      border: ativo ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--brand-soft)',
+                      fontFamily: 'var(--font-display)',
+                    }}
+                  >
+                    {iniciais(nome)}
+                  </div>
+                  <span className="font-bold text-sm leading-tight">{nome}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── ETAPA 4: confirmar ──────────────────────────────────────────── */}
       {etapaAtual === 'confirmar' && selecao && (
         <div className="flex flex-col gap-4">
           <h3 className="text-xl font-extrabold text-center" style={{ color: 'var(--text-strong)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
@@ -292,6 +341,7 @@ export default function FormularioApontamentoTForce({ op, tamanho, onSalvar }: P
               </span>
             </div>
             <div className="px-5 py-1" style={{ background: '#fff' }}>
+              <Linha label="Operadora" valor={operadoraSelecionada ?? ''} />
               <Linha label="PI" valor={rotuloPI(selecao.pi)} />
               <Linha label="Operação" valor={selecao.operacao.nome} />
               {selecao.modo && <Linha label="Modo de falha" valor={selecao.modo} />}
