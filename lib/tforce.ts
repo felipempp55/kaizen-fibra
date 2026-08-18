@@ -28,7 +28,7 @@ export interface PITForce {
   operacoes: OperacaoTForce[]
 }
 
-export const PIS_TFORCE: PITForce[] = [
+const PIS_TFORCE_BASE: PITForce[] = [
   {
     codigo: 'PI0000001',
     curto: 'PI1',
@@ -131,6 +131,13 @@ export const PIS_TFORCE: PITForce[] = [
     ],
   },
 ]
+
+// "Outros" entra automaticamente em todo PI: leva direto para observação + contadores
+// de perda/retrabalho, sem materiais (mesmo comportamento inicial do "Outros" da fibra).
+export const PIS_TFORCE: PITForce[] = PIS_TFORCE_BASE.map(pi => ({
+  ...pi,
+  operacoes: [...pi.operacoes, { nome: 'Outros', modos: [] }],
+}))
 
 /** Rótulo de exibição do PI: "PI45 · Trança · Pião · Corte dos fios" */
 export function rotuloPI(pi: PITForce): string {
