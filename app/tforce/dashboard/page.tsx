@@ -443,6 +443,11 @@ export default function TForceDashboardPage() {
                         <td className="px-3 py-2.5">
                           <span className="font-semibold" style={{ color: 'var(--text-strong)' }}>{a.tipo_desperdicio}</span>
                           {a.modo_falha && <span style={{ color: 'var(--text-muted)' }}> · {a.modo_falha}</span>}
+                          {a.observacao && (
+                            <span className="block text-xs mt-0.5 italic" style={{ color: 'var(--text-muted)' }}>
+                              &ldquo;{a.observacao}&rdquo;
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-2.5 text-right whitespace-nowrap font-bold tabular-nums" style={{ fontFamily: 'var(--font-mono)' }}>
                           {a.quantidade_pecas != null && a.quantidade_pecas > 0 && <span style={{ color: 'var(--signal-amber)' }}>{a.quantidade_pecas} <span className="text-[10px] uppercase">retr</span></span>}
